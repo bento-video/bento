@@ -32,7 +32,7 @@ module.exports.simpleMerge = async (event, context) => {
     let keep_char_count = templateLength - String(num).length;
     let suffix = String(num);
 
-    let chunkKey = strTemplate.slice(0, keep_char_count) + suffix + ".mov";
+    let chunkKey = strTemplate.slice(0, keep_char_count) + suffix + ".mp4";
 
     //get the file
     let s3Object = await s3
@@ -47,8 +47,8 @@ module.exports.simpleMerge = async (event, context) => {
   // merge files stored on lambda
   spawnSync(
     "/opt/ffmpeg/ffmpeg",
+    "-f",
     [
-      "-f",
       "concat",
       "-safe",
       "0",
@@ -56,15 +56,15 @@ module.exports.simpleMerge = async (event, context) => {
       `/tmp/concat_list.txt`,
       "-c",
       "copy",
-      "/tmp/humility_transcoded.mov"
+      "/tmp/humility_transcoded.mp4"
     ],
     { stdio: "inherit" }
   );
   // read .mov from disk
-  const gifFile = readFileSync("/tmp/humility_transcoded.mov");
+  const concatenatedFile = readFileSync("/tmp/humility_transcoded.mp4");
 
   // delete the temp files
-  unlinkSync(`/tmp/humility_transcoded.mov`);
+  unlinkSync(`/tmp/humility_transcoded.mp4`);
   unlinkSync(`/tmp/concat_list.txt`);
 
   for (let num = 0; num < 41; num += 1) {
@@ -72,17 +72,17 @@ module.exports.simpleMerge = async (event, context) => {
     let suffix = String(num);
 
     let chunkKey =
-      `/tmp/` + strTemplate.slice(0, keep_char_count) + suffix + ".mov";
+      `/tmp/` + strTemplate.slice(0, keep_char_count) + suffix + ".mp4";
 
     unlinkSync(chunkKey);
   }
 
-  // upload gif to s3
+  // upload mp4 to s3
   await s3
     .putObject({
       Bucket: "testencodeoutput",
-      Key: "humility_transcoded.mov",
-      Body: gifFile
+      Key: "humility_transcoded_720.mp4",
+      Body: concatenatedFile
     })
     .promise();
 };
