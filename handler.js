@@ -47,8 +47,9 @@ module.exports.simpleMerge = async (event, context) => {
   // merge files stored on lambda
   spawnSync(
     "/opt/ffmpeg/ffmpeg",
-    "-f",
+
     [
+      "-f",
       "concat",
       "-safe",
       "0",
