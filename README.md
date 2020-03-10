@@ -1,5 +1,4 @@
-- S3 name and object keys hardcoded
-- lambda not trigerred by events
+- S3 name hardcoded
 
 Assumptions:
 
