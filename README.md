@@ -1,18 +1,45 @@
 - S3 name hardcoded
 
-Assumptions:
-
-- params is an object:
-
+## DB Schema:
+JOBS
 ```javascript
-  {
-  chunkCount: numberOfFilesToConcat,
-  fileFormat: extensionOfTranscodedFiles,
-  videoName: chosenName
-  }
+{
+  id: 12345 (partition key)
+  totalTasks: N
+  finishedTasks: 0
+  filename: cool_music_video
+  status: pending
+  inputType:
+  outputType:
+  created_at:
+  completed_at:
+  ...
+}
+```
+SUBTASKS
+```javascript
+{
+    jobId: 12345 (partition key)
+    segmentId: 001 (sort key)
+    filename: 12345-001
+    status: pending
+    created_at:
+    completed_at:
+    ...
+}
 ```
 
-- transcoded files naming will be `output000.ext, output001.ext...`
+## Manifest file content template
+file '/tmp/12345-001.mp4'
+file '/tmp/12345-002.mp4'
+...
 
-- name of the manifest file found in S3 `merge_manifest.txt`
-  - file 'path'(key) on lambda will be `/tmp/${params.videoName}/output000.ext`
+## Path/object keys in S3 (post transcoding)
+/jobId/jobId-segmentId.outputType
+`/12345/12345-001.mp4`
+
+## Other 
+
+- name of the manifest file in post transcoding S3 `merge-manifest.txt`
+
+- transcode chunk file 'path'(key) on Lambda: `/tmp/jobId-segmentId.ext`
