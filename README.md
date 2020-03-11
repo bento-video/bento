@@ -36,12 +36,14 @@ file '/tmp/12345-002.mp4'
 ...
 
 ## Path/object keys in S3 (post transcoding)
+- chunks:
+
 /jobId/jobId-segmentId.outputType
 
 `/12345/12345-001.mp4`
 
-## Other 
+- manifest file:
+ `/jobId/merge-manifest.txt`
 
-- name of the manifest file in post transcoding S3 `merge-manifest.txt`
 
 - transcode chunk file 'path'(key) on Lambda: `/tmp/jobId-segmentId.ext`
