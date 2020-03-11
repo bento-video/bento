@@ -31,11 +31,13 @@ SUBTASKS
 
 ## Manifest file content template
 file '/tmp/12345-001.mp4'
+
 file '/tmp/12345-002.mp4'
 ...
 
 ## Path/object keys in S3 (post transcoding)
 /jobId/jobId-segmentId.outputType
+
 `/12345/12345-001.mp4`
 
 ## Other 
