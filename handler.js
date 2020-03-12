@@ -21,12 +21,24 @@ const getJobData = async dbQueryParams => {
   }).promise();
 };
 
-module.exports.simpleMerge = async () => {
+const writeJob = async putParams => {
+  console.log("Updating the item...");
+  return await docClient.update(putParams, function (err, data) {
+    if (err) {
+      console.error("Unable to update item. Error JSON:", JSON.stringify(err, null, 2));
+    } else {
+      console.log("UpdateItem succeeded:", JSON.stringify(data, null, 2));
+    }
+  }).promise();
+};
+
+module.exports.simpleMerge = async (event) => {
   const transcodedChunksBucket = process.env.TRANSCODED_CHUNKS_BUCKET;
   const endBucket = process.env.END_BUCKET;
 
   const table = "Jobs";
-  const id = 12345;
+  const id = event.Payload.jobId;
+  // const id = 12345;
 
   const dbQueryParams = {
     TableName: table,
@@ -127,12 +139,13 @@ module.exports.simpleMerge = async () => {
     ReturnValues: `UPDATED_NEW`
   };
 
-  console.log("Updating the item...");
-  await docClient.update(putParams, function (err, data) {
-    if (err) {
-      console.error("Unable to update item. Error JSON:", JSON.stringify(err, null, 2));
-    } else {
-      console.log("UpdateItem succeeded:", JSON.stringify(data, null, 2));
-    }
-  }).promise()
+  await writeJob(putParams);
+  // console.log("Updating the item...");
+  // await docClient.update(putParams, function (err, data) {
+  //   if (err) {
+  //     console.error("Unable to update item. Error JSON:", JSON.stringify(err, null, 2));
+  //   } else {
+  //     console.log("UpdateItem succeeded:", JSON.stringify(data, null, 2));
+  //   }
+  // }).promise();
 };
