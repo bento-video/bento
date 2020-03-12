@@ -1,0 +1,40 @@
+service: simpleMerge
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  region: us-east-1
+  timeout: 900
+  # deploymentBucket:
+  #   name: testencodeinput
+  # iamRoleStatements:
+  #   - Effect: Allow
+  #     Action:
+  #       - s3:GetObject
+  #     Resource: "arn:aws:S3:::${self:custom.upload-bucket}/*"
+  #   - Effect: Allow
+  #     Action:
+  #       - s3:PutObject
+  #     Resource: "arn:aws:S3:::${self:custom.upload-bucket}/*"
+
+package:
+  individually: true
+
+custom:
+  transcoded-chunks-bucket: bento-transcoded-segments
+  end-bucket: bento-video-end
+
+functions:
+  simpleMerge:
+    handler: handler.simpleMerge
+    environment:
+      TRANSCODED_CHUNKS_BUCKET: "${self:custom.transcoded-chunks-bucket}"
+      END_BUCKET: "${self:custom.end-bucket}"
+      
+    timeout: 900
+    layers:
+      - { Ref: FfmpegLambdaLayer }
+
+layers:
+  ffmpeg:
+    path: layer
