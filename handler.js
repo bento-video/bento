@@ -21,32 +21,6 @@ const getJobData = async dbQueryParams => {
   }).promise();
 };
 
-// const loopChunks = (params, action => {
-//   for (let num = 0; num < params.chunkCount; num += 1) {
-//     let suffix = String(num);
-//     let keep_char_count = templateLength - suffix.length;
-//     let prefix = chunkNameTemplate.slice(0, keep_char_count);
-
-//     let chunkKey = `${prefix}${suffix}.${params.fileFormat}`;
-
-//     action(params, chunkKey);
-//   }
-// });
-
-// const getFiles = async(params, chunkKey => {
-//   //get the file
-//   let s3Object =
-//     await s3.getObject({
-//       Bucket: "testencodeinput",
-//       Key: chunkKey
-//     })
-//       .promise();
-//   // write file to disk
-//   writeFileSync(`/tmp/${params.videoName}/${chunkKey}`, s3Object.Body);
-// });
-
-// const unlink = (chunkCount) => { unlinkSync(chunkKey) }
-
 module.exports.simpleMerge = async () => {
   const table = "Jobs";
   const id = 12345;
