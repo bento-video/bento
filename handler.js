@@ -22,6 +22,9 @@ const getJobData = async dbQueryParams => {
 };
 
 module.exports.simpleMerge = async () => {
+  const transcodedChunksBucket = process.env.TRANSCODED_CHUNKS_BUCKET;
+  const endBucket = process.env.END_BUCKET;
+
   const table = "Jobs";
   const id = 12345;
 
@@ -38,16 +41,10 @@ module.exports.simpleMerge = async () => {
   const chunkCount = jobData.Item.totalTasks;
   const filename = jobData.Item.filename;
 
-  const params = {
-    jobId,
-    fileFormat,
-    chunkCount
-  };
-
   const chunkNameTemplate = `${jobId}/${jobId}-000`;
   const templateLength = chunkNameTemplate.length;
 
-  const concatFilePath = `/tmp/${filename}${fileFormat}`;
+  const localMasterFilePath = `/tmp/${filename}${fileFormat}`;
   const manifestPath = `/tmp/merge-manifest.txt`;
 
   // write each chunk to lambda temp
@@ -61,7 +58,7 @@ module.exports.simpleMerge = async () => {
     let chunkKey = `${prefix}${suffix}${fileFormat}`;
 
     let s3Object = await s3.getObject({
-      Bucket: "testencodeinput",
+      Bucket: transcodedChunksBucket,
       Key: chunkKey
     }).promise();
     //write file to disk
@@ -84,15 +81,15 @@ module.exports.simpleMerge = async () => {
       "-safe", "0",
       "-i", manifestPath,
       "-c", "copy",
-      concatFilePath
+      localMasterFilePath
     ],
     { stdio: "inherit" }
   );
   // read concatenated file from disk
-  const concatFile = readFileSync(concatFilePath);
+  const masterFile = readFileSync(localMasterFilePath);
 
   // delete the temp files
-  unlinkSync(concatFilePath);
+  unlinkSync(localMasterFilePath);
   unlinkSync(manifestPath);
 
   for (let num = 0; num < chunkCount; num += 1) {
@@ -108,10 +105,10 @@ module.exports.simpleMerge = async () => {
   // upload mp4 to s3
   await s3
     .putObject({
-      Bucket: "testencodeoutput",
+      Bucket: endBucket,
       Key: `${jobId}-${filename}${fileFormat}`,
 
-      Body: concatFile
+      Body: masterFile
     })
     .promise();
 
