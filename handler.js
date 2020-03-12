@@ -19,7 +19,7 @@ const getJobData = async dbQueryParams => {
       return data;
     }
   }).promise();
-}
+};
 
 // const loopChunks = (params, action => {
 //   for (let num = 0; num < params.chunkCount; num += 1) {
@@ -70,31 +70,37 @@ module.exports.simpleMerge = async () => {
     chunkCount
   };
 
-  const chunkNameTemplate = `${jobId}-000`;
+  const chunkNameTemplate = `${jobId}/${jobId}-000`;
   const templateLength = chunkNameTemplate.length;
 
-  const concatFilePath = `/tmp/${jobId}/${jobId}-${filename}.${fileFormat}`;
-  const manifestPath = `/tmp/${jobId}/merge-manifest.txt`
+  const concatFilePath = `/tmp/${filename}${fileFormat}`;
+  const manifestPath = `/tmp/merge-manifest.txt`;
 
   // write each chunk to lambda temp
   // loopChunks(params, getFiles);
 
-  for (let num = 0; num < params.chunkCount; num += 1) {
+  for (let num = 0; num < chunkCount; num += 1) {
     let suffix = String(num);
     let keep_char_count = templateLength - suffix.length;
     let prefix = chunkNameTemplate.slice(0, keep_char_count);
 
-    let chunkKey = `${prefix}${suffix}.${params.fileFormat}`;
-
-    console.log(chunkKey);
+    let chunkKey = `${prefix}${suffix}${fileFormat}`;
 
     let s3Object = await s3.getObject({
       Bucket: "testencodeinput",
       Key: chunkKey
     }).promise();
     //write file to disk
-    writeFileSync(`/tmp/${params.batchId}/${chunkKey}`, s3Object.Body);
+    writeFileSync(`/tmp/${chunkKey.slice(6)}`, s3Object.Body);
   }
+
+  // write manifest
+  let s3Object = await s3.getObject({
+    Bucket: "testencodeinput",
+    Key: "12345/merge-manifest.txt"
+  }).promise();
+  //write file to disk
+  writeFileSync(manifestPath, s3Object.Body);
 
   // merge files stored on lambda
   spawnSync(
@@ -115,21 +121,22 @@ module.exports.simpleMerge = async () => {
   unlinkSync(concatFilePath);
   unlinkSync(manifestPath);
 
-  for (let num = 0; num < params.chunkCount; num += 1) {
+  for (let num = 0; num < chunkCount; num += 1) {
     let suffix = String(num);
     let keep_char_count = templateLength - suffix.length;
     let prefix = chunkNameTemplate.slice(0, keep_char_count);
 
-    let chunkKey = `${prefix}${suffix}.${params.fileFormat}`;
+    let chunkKey = `${prefix}${suffix}${fileFormat}`;
 
-    unlinkSync(chunkKey)
+    unlinkSync('/tmp/' + chunkKey.slice(6));
   }
 
   // upload mp4 to s3
   await s3
     .putObject({
       Bucket: "testencodeoutput",
-      Key: `${params.batchId}.${params.fileFormat}`,
+      Key: `${jobId}-${filename}${fileFormat}`,
+
       Body: concatFile
     })
     .promise();
@@ -150,11 +157,11 @@ module.exports.simpleMerge = async () => {
   };
 
   console.log("Updating the item...");
-  docClient.update(putParams, function (err, data) {
+  await docClient.update(putParams, function (err, data) {
     if (err) {
       console.error("Unable to update item. Error JSON:", JSON.stringify(err, null, 2));
     } else {
       console.log("UpdateItem succeeded:", JSON.stringify(data, null, 2));
     }
-  });
+  }).promise()
 };
