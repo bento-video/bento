@@ -1,11 +1,11 @@
 const { spawnSync } = require("child_process");
-const { readFileSync, writeFileSync, unlinkSync } = require("fs");
+const { mkdirSync, readFileSync, writeFileSync, unlinkSync } = require("fs");
 const AWS = require("aws-sdk");
 const s3 = new AWS.S3();
 
 AWS.config.update({
-  region: "us-east-2",
-  endpoint: "https://dynamodb.us-east-2.amazonaws.com"
+  region: "us-east-1",
+  endpoint: "https://dynamodb.us-east-1.amazonaws.com"
 });
 
 const docClient = new AWS.DynamoDB.DocumentClient();
@@ -15,7 +15,7 @@ const getJobData = async dbQueryParams => {
     if (err) {
       console.error("Unable to read item. Error JSON:", JSON.stringify(err, null, 2));
     } else {
-      console.log("GetItem succeeded:");
+      console.log("GetItem succeeded:", data);
       return data;
     }
   }).promise();
@@ -36,54 +36,75 @@ module.exports.simpleMerge = async (event) => {
   const transcodedChunksBucket = process.env.TRANSCODED_CHUNKS_BUCKET;
   const endBucket = process.env.END_BUCKET;
 
-  const table = "Jobs";
-  const id = event.Payload.jobId;
-  // const id = 12345;
+  // console.log(event);
+  const tableName = "Jobs";
+  const jobId = event.jobId;
+  // const jobId = "1584058009225";
+
 
   const dbQueryParams = {
-    TableName: table,
-    Key: { id }
+    TableName: tableName,
+    Key: { id: jobId }
   };
 
   // is this await still required?
   const jobData = await getJobData(dbQueryParams);
 
-  const jobId = String(jobData.Item.id);
+  // const jobId = String(jobData.Item.id);
   const fileFormat = jobData.Item.outputType;
   const chunkCount = jobData.Item.totalTasks;
   const filename = jobData.Item.filename;
 
-  const chunkNameTemplate = `${jobId}/${jobId}-000`;
-  const templateLength = chunkNameTemplate.length;
+  // const chunkNameTemplate = `${jobId}/${jobId}-000`;
+  // const templateLength = chunkNameTemplate.length;
 
   const localMasterFilePath = `/tmp/${filename}${fileFormat}`;
-  const manifestPath = `/tmp/merge-manifest.txt`;
+  const localManifestPath = `/tmp/manifest.ffcat`;
+
+  const localChunkFilePrefix = `/tmp/${jobId}-`;
+  let chunkFileSuffix;
 
   // write each chunk to lambda temp
-  // loopChunks(params, getFiles);
+  // mkdirSync(`/tmp/${jobId}`)
 
   for (let num = 0; num < chunkCount; num += 1) {
-    let suffix = String(num);
-    let keep_char_count = templateLength - suffix.length;
-    let prefix = chunkNameTemplate.slice(0, keep_char_count);
+    let digitCount = String(num).length;
 
-    let chunkKey = `${prefix}${suffix}${fileFormat}`;
+    if (digitCount === 1) {
+      chunkFileSuffix = `00${String(num)}${fileFormat}`;
+    } else if (digitCount === 2) {
+      chunkFileSuffix = `0${String(num)}${fileFormat}`;
+    } else if (digitCount === 3) {
+      chunkFileSuffix = `${String(num)}${fileFormat}`;
+    }
+
+    let s3chunkKey = `${jobId}/${jobId}-${chunkFileSuffix}`;
+    let localChunkFilePath = localChunkFilePrefix + chunkFileSuffix;
+
+    console.log('s3chunkKey', s3chunkKey)
+    console.log('localChunkFilePath', localChunkFilePath)
 
     let s3Object = await s3.getObject({
       Bucket: transcodedChunksBucket,
-      Key: chunkKey
+      Key: s3chunkKey
     }).promise();
     //write file to disk
-    writeFileSync(`/tmp/${chunkKey.slice(6)}`, s3Object.Body);
+    console.log('chunk body', s3Object);
+
+    writeFileSync(localChunkFilePath, s3Object.Body);
   }
 
   // write manifest
   let s3Object = await s3.getObject({
-    Bucket: "testencodeinput",
-    Key: "12345/merge-manifest.txt"
+    Bucket: transcodedChunksBucket,
+    Key: `${jobId}/manifest.ffcat`
   }).promise();
+  console.log('manifest body', s3Object);
+
   //write file to disk
-  writeFileSync(manifestPath, s3Object.Body);
+
+  writeFileSync(localManifestPath, s3Object.Body);
+  console.log('post get/write manifest and pre merge')
 
   // merge files stored on lambda
   spawnSync(
@@ -91,7 +112,7 @@ module.exports.simpleMerge = async (event) => {
     [
       "-f", "concat",
       "-safe", "0",
-      "-i", manifestPath,
+      "-i", localManifestPath,
       "-c", "copy",
       localMasterFilePath
     ],
@@ -100,18 +121,28 @@ module.exports.simpleMerge = async (event) => {
   // read concatenated file from disk
   const masterFile = readFileSync(localMasterFilePath);
 
-  // delete the temp files
+  console.log('masterFile has been read');
+  // delete the tmp files
   unlinkSync(localMasterFilePath);
-  unlinkSync(manifestPath);
+  unlinkSync(localManifestPath);
 
   for (let num = 0; num < chunkCount; num += 1) {
-    let suffix = String(num);
-    let keep_char_count = templateLength - suffix.length;
-    let prefix = chunkNameTemplate.slice(0, keep_char_count);
+    let digitCount = String(num).length;
 
-    let chunkKey = `${prefix}${suffix}${fileFormat}`;
+    if (digitCount === 1) {
+      chunkFileSuffix = `00${String(num)}${fileFormat}`;
+    } else if (digitCount === 2) {
+      chunkFileSuffix = `0${String(num)}${fileFormat}`;
+    } else if (digitCount === 3) {
+      chunkFileSuffix = `${String(num)}${fileFormat}`;
+    }
 
-    unlinkSync('/tmp/' + chunkKey.slice(6));
+    let localChunkFilePath = localChunkFilePrefix + chunkFileSuffix;
+
+    console.log('unlinking');
+    console.log('localChunkFilePath', localChunkFilePath)
+
+    unlinkSync(localChunkFilePath);
   }
 
   // upload mp4 to s3
@@ -127,8 +158,8 @@ module.exports.simpleMerge = async (event) => {
   // update job status on DB to completed
 
   const putParams = {
-    TableName: table,
-    Key: { 'id': id },
+    TableName: tableName,
+    Key: { 'id': jobId },
     UpdateExpression: "set #s = :stat",
     ExpressionAttributeNames: {
       "#s": "status"
@@ -140,12 +171,4 @@ module.exports.simpleMerge = async (event) => {
   };
 
   await writeJob(putParams);
-  // console.log("Updating the item...");
-  // await docClient.update(putParams, function (err, data) {
-  //   if (err) {
-  //     console.error("Unable to update item. Error JSON:", JSON.stringify(err, null, 2));
-  //   } else {
-  //     console.log("UpdateItem succeeded:", JSON.stringify(data, null, 2));
-  //   }
-  // }).promise();
 };
