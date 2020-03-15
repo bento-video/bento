@@ -1,0 +1,56 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: bentoexecutor
+# app and org for use with dashboard.serverless.com
+#app: your-app-name
+#org: your-org-name
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+# frameworkVersion: "=X.X.X"
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  iamRoleStatements: 
+  - Effect: Allow
+    Action: 
+      - s3:GetObject
+    Resource: "arn:aws:s3:::${self:custom.start-bucket}/*"
+  - Effect: Allow
+    Action: 
+      - s3:PutObject
+    Resource: "arn:aws:s3:::${self:custom.transcode-bucket}/*"
+  
+  # - Effect: Allow
+  #   Action:
+  #     - lambda:InvokeFunction
+  #   Resource: "arn:aws:lambda:us-east-1:247910611346:function:simpleMerge-dev-simpleMerge"
+
+custom: 
+  start-bucket: bento-video-start
+  transcode-bucket: bento-transcoded-segments
+
+functions:
+  startPipeline:
+    handler: bento-exec/handler.startPipeline
+    environment:
+      TRANSCODED_VIDEO_BUCKET: "${self:custom.transcode-bucket}"
+    events: 
+      - s3: 
+        bucket: ${self:custom.start-bucket}
+        event: s3:ObjectCreated:*
+        existing: true
+    layers:
+      - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
