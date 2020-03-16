@@ -212,15 +212,15 @@ module.exports.transcodeVideo = async (event) => {
     .catch(err => console.error("Unable to read item. Error JSON:", JSON.stringify(err, null, 2)));
 
   if (subtasksComplete) {
-    console.log('Simulating merge invoke...')
-    /*
+    console.log('Attempting merge invoke...')
+
     await lambda.invoke(mergeParams, (err, data) => {
       if (err) {
         console.error(JSON.stringify(err));
       } else {
         console.log(data);
       }
-    }).promise() */
+    }).promise()
   }
 };
 
