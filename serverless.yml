@@ -1,0 +1,42 @@
+service: bentoTranscode
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  iamRoleStatements: 
+    - Effect: Allow
+      Action: 
+        - s3:GetObject
+      Resource: "arn:aws:s3:::${self:custom.start-bucket}/*"
+    - Effect: Allow
+      Action: 
+        - s3:PutObject
+      Resource: "arn:aws:s3:::${self:custom.transcode-bucket}/*"
+    - Effect: Allow
+      Action: 
+        - dynamodb:GetItem
+        - dynamodb:UpdateItem
+      Resource: "arn:aws:dynamodb:us-east-1:247910611346:table/Segments"
+    - Effect: Allow
+      Action: 
+        - dynamodb:GetItem
+        - dynamodb:UpdateItem
+      Resource: "arn:aws:dynamodb:us-east-1:247910611346:table/Jobs"
+    - Effect: Allow
+      Action:
+        - lambda:InvokeFunction
+      Resource: "arn:aws:lambda:us-east-1:247910611346:function:simpleMerge-dev-simpleMerge"
+
+custom: 
+  start-bucket: bento-video-start
+  transcode-bucket: bento-transcoded-segments
+
+functions:
+  transcodeVideo:
+    handler: bento-transcode/handler.transcodeVideo
+    environment:
+      TRANSCODED_VIDEO_BUCKET: "${self:custom.transcode-bucket}"
+      START_VIDEO_BUCKET: "${self:custom.start-bucket}"
+      MERGE_LAMBDA_ARN: "arn:aws:lambda:us-east-1:247910611346:function:simpleMerge-dev-simpleMerge"
+    layers:
+      - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
