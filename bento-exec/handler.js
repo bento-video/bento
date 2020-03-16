@@ -10,6 +10,7 @@ const lambda = new AWS.Lambda({
   region: "us-east-1"
 });
 const transcodedBucket = process.env.TRANSCODED_VIDEO_BUCKET;
+const transcodeLambdaAddress = process.env.TRANSCODE_LAMBDA_ADDRESS;
 const jobsTable = "Jobs";
 const segmentsTable = "Segments";
 const manifestPath = '/tmp/manifest.ffcat';
@@ -71,7 +72,8 @@ const saveJobData = (jobId, keyframeTimes, fileBasename, fileExt) => {
       "filename": fileBasename,
       "status": "pending",
       "inputType": fileExt,
-      "createdAt": new Date,
+      "outputType": '.mp4',
+      "createdAt": Date.now(),
       "completedAt": null
     }
   };
@@ -94,9 +96,10 @@ const saveSegmentsData = (jobId, keyframeTimes) => {
         "jobId": jobId,
         "id": id,
         "startTime": keyframeTimes[segmentNum],
+        "endTime": keyframeTimes[segmentNum + 1],
         "filename": filename,
         "status": "pending",
-        "createdAt": new Date,
+        "createdAt": Date.now(),
         "completedAt": null
       }
     };
@@ -119,11 +122,14 @@ const dbWriter = (params, item) => {
 }
 
 const writeToManifest = (filenames) => {
-  const stream = createWriteStream(manifestPath, { flags: 'a' })
+  let manifest = ""
   for (let segment of filenames) {
-    stream.write(`file ${segment}.mp4\n`);
+    manifest += `file ${segment}.mp4\n`;
   }
-
+  console.log('writing manifest: ', manifest);
+  writeFileSync(manifestPath, manifest, err => {
+    console.log(`${err ? err : 'successfully wrote to manifest'}`);
+  })
   return readFileSync(manifestPath)
 }
 
@@ -169,16 +175,30 @@ module.exports.startPipeline = async (event) => {
       })
       .promise();
 
-    segmentFilenames.forEach((segmentFilename, idx) => {
+    const invokeParams = {
+      FunctionName: transcodeLambdaAddress,
+      InvocationType: "Event",
+      LogType: 'None',
+      ClientContext: 'BentoExec',
+    };
+
+    for (let idx = 0; idx < segmentFilenames.length; idx += 1) {
       const payload = {
-        videoKey: videoKey,
-        jobId: jobId,
-        segmentFilename: segmentFilename,
-        startTime: keyframeTimes[idx],
-        endTime: keyframeTimes[idx + 1]
-      }
-      console.log('Invoking bento-transcode with payload: ', payload)
-    })
+        segmentData: {
+          videoKey: videoKey,
+          jobId: jobId,
+          segmentName: segmentFilenames[idx],
+          startTime: keyframeTimes[idx],
+          endTime: keyframeTimes[idx + 1]
+        }
+      };
+      invokeParams['Payload'] = JSON.stringify(payload);
+      console.log('Invoking bento-transcode with payload: ', invokeParams);
+
+      await lambda.invoke(invokeParams, (err, data) => {
+        console.log(`${err ? err : data}`)
+      }).promise();
+    }
 
     unlinkSync(manifestPath)
     unlinkSync(`${videoPath}.json`)

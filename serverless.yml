@@ -32,11 +32,10 @@ provider:
     Action: 
       - s3:PutObject
     Resource: "arn:aws:s3:::${self:custom.transcode-bucket}/*"
-  
-  # - Effect: Allow
-  #   Action:
-  #     - lambda:InvokeFunction
-  #   Resource: "arn:aws:lambda:us-east-1:247910611346:function:simpleMerge-dev-simpleMerge"
+  - Effect: Allow
+    Action:
+      - lambda:InvokeFunction
+    Resource: "arn:aws:lambda:us-east-1:247910611346:function:bentoTranscode-dev-transcodeVideo"
 
 custom: 
   start-bucket: bento-video-start
@@ -47,6 +46,7 @@ functions:
     handler: bento-exec/handler.startPipeline
     environment:
       TRANSCODED_VIDEO_BUCKET: "${self:custom.transcode-bucket}"
+      TRANSCODE_LAMBDA_ADDRESS: "arn:aws:lambda:us-east-1:247910611346:function:bentoTranscode-dev-transcodeVideo" 
     events: 
       - s3: 
         bucket: ${self:custom.start-bucket}
