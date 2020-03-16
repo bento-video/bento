@@ -1,6 +1,7 @@
 'use strict';
 const path = require('path');
 const { spawnSync } = require("child_process");
+const { execSync } = require("child_process");
 const { readFileSync, writeFileSync, unlinkSync, createWriteStream } = require("fs");
 const AWS = require("aws-sdk");
 const s3 = new AWS.S3();
@@ -14,12 +15,13 @@ const segmentsTable = "Segments";
 const manifestPath = '/tmp/manifest.ffcat';
 
 const getVideo = async (key, bucket) => {
+
   const videoObject = await s3.getObject({
     Bucket: bucket,
     Key: key
-  });
+  }).promise();
 
-  const path = `tmp/${key}`;
+  const path = `/tmp/${key}`;
   console.log(`Writing file to ${path}`);
 
   writeFileSync(path, videoObject.Body);
@@ -28,18 +30,30 @@ const getVideo = async (key, bucket) => {
 };
 
 const probeVideo = filepath => {
-  console.log('Probing ', filepath, ' saving to ', `${filepath}.json`)
-  spawnSync(
-    'opt/ffmpeg/ffprobe',
+  const jsonPath = `${filepath}.json`
+  console.log('Probing ', filepath, ' saving to ', jsonPath)
+
+  const result = spawnSync(
+    '/opt/ffmpeg/ffprobe',
     [
-      "-show_entries", "packet=pos,pts_time,flags", "-select_streams", "v", "-of", "compact=p=0:nk=1", "-print_format", "json", "-show_format", "-show_streams", filepath, ">", `${filepath}.json`
+      "-show_entries", "packet=pos,pts_time,flags", "-select_streams", "v", "-of", "compact=p=0:nk=1", "-print_format", "json", "-show_format", "-show_streams", `${filepath}`
     ],
-    { stdio: "inherit" }
+    { stdio: "pipe", stderr: "pipe" }
   );
-  console.log(`Trying to read file at: ${filepath}.json`);
-  const probeData = readFileSync(`${filepath}.json`);
+
+  console.log("Result is:", result.stdout.toString(), result.stderr.toString());
+
+  writeFileSync(jsonPath, result.stdout, err => {
+    if (err) {
+      console.log(err)
+    }
+    console.log("success?")
+  })
+
+  console.log(`Trying to read file at: ${jsonPath}`);
+  const probeData = readFileSync(jsonPath);
   if (probeData) {
-    console.log('Returning probeData');
+    console.log('Returning probeData:', JSON.parse(probeData));
   }
 
   return JSON.parse(probeData);
@@ -131,9 +145,10 @@ module.exports.startPipeline = async (event) => {
     const [fileBasename, fileExt] = [filePathObj.name, filePathObj.ext];
     const jobId = `${Date.now()}`;
 
-    console.log('Firing up pipeline for ', videoKey)
+    console.log('Firing up pipeline for ', videoKey, videoBucket)
 
     const videoPath = await getVideo(videoKey, videoBucket);
+
     const probeData = probeVideo(videoPath);
 
     const keyframeTimes = probeData.packets.filter(p => p.flags === 'K_').map(kfPacket => kfPacket.pts_time);
@@ -143,9 +158,8 @@ module.exports.startPipeline = async (event) => {
     saveJobData(jobId, keyframeTimes, fileBasename, fileExt);
     const segmentFilenames = saveSegmentsData(jobId, keyframeTimes);
     const manifest = writeToManifest(segmentFilenames);
-    unlinkSync(manifestPath)
-    unlinkSync(videoPath)
-    unlinkSync(`${videoPath}.json`)
+
+
 
     await s3
       .putObject({
@@ -165,5 +179,11 @@ module.exports.startPipeline = async (event) => {
       }
       console.log('Invoking bento-transcode with payload: ', payload)
     })
+
+    unlinkSync(manifestPath)
+    unlinkSync(`${videoPath}.json`)
+    unlinkSync(videoPath)
   }
+
+
 };
