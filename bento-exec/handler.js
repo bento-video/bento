@@ -157,7 +157,10 @@ module.exports.startPipeline = async (event) => {
 
     const probeData = probeVideo(videoPath);
 
-    const keyframeTimes = probeData.packets.filter(p => p.flags === 'K_').map(kfPacket => kfPacket.pts_time);
+    const keyframeTimes = [
+      ...probeData.packets.filter(p => p.flags === 'K_'),
+      probeData.packets[probeData.packets.length - 1]
+    ].map(kfPacket => kfPacket.pts_time);
 
     console.log("Keyframe times: ", keyframeTimes)
 
