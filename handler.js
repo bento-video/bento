@@ -11,6 +11,7 @@ AWS.config.update({
 const docClient = new AWS.DynamoDB.DocumentClient();
 
 const getJobData = async dbQueryParams => {
+  console.log('Getting data from jobs table: ', dbQueryParams);
   return await docClient.get(dbQueryParams, function (err, data) {
     if (err) {
       console.error("Unable to read item. Error JSON:", JSON.stringify(err, null, 2));
@@ -36,37 +37,32 @@ module.exports.simpleMerge = async (event) => {
   const transcodedChunksBucket = process.env.TRANSCODED_CHUNKS_BUCKET;
   const endBucket = process.env.END_BUCKET;
 
-  // console.log(event);
   const tableName = "Jobs";
   const jobId = event.jobId;
-  // const jobId = "1584058009225";
-
 
   const dbQueryParams = {
     TableName: tableName,
     Key: { id: jobId }
   };
 
-  // is this await still required?
   const jobData = await getJobData(dbQueryParams);
 
-  // const jobId = String(jobData.Item.id);
+  const inputFormat = jobData.Item.inputType;
   const fileFormat = jobData.Item.outputType;
   const chunkCount = jobData.Item.totalTasks;
   const filename = jobData.Item.filename;
 
-  // const chunkNameTemplate = `${jobId}/${jobId}-000`;
-  // const templateLength = chunkNameTemplate.length;
-
   const localMasterFilePath = `/tmp/${filename}${fileFormat}`;
+  const localFinalFilePath = `/tmp/${filename}-final${fileFormat}`;
+  const localOriginalFilePath = `/tmp/${filename}-original${inputFormat}`
   const localManifestPath = `/tmp/manifest.ffcat`;
 
   const localChunkFilePrefix = `/tmp/${jobId}-`;
   let chunkFileSuffix;
 
   // write each chunk to lambda temp
-  // mkdirSync(`/tmp/${jobId}`)
 
+  console.log('Grabbing segments from transcodedChunksBucket');
   for (let num = 0; num < chunkCount; num += 1) {
     let digitCount = String(num).length;
 
@@ -81,7 +77,7 @@ module.exports.simpleMerge = async (event) => {
     let s3chunkKey = `${jobId}/${jobId}-${chunkFileSuffix}`;
     let localChunkFilePath = localChunkFilePrefix + chunkFileSuffix;
 
-    console.log('s3chunkKey', s3chunkKey)
+    console.log('Getting s3chunkKey ', s3chunkKey, ' from ', transcodedChunksBucket)
     console.log('localChunkFilePath', localChunkFilePath)
 
     let s3Object = await s3.getObject({
@@ -89,24 +85,36 @@ module.exports.simpleMerge = async (event) => {
       Key: s3chunkKey
     }).promise();
     //write file to disk
-    console.log('chunk body', s3Object);
+    console.log('Received chunk body:', s3Object);
 
+    console.log('Attempting write to : ', localChunkFilePath);
     writeFileSync(localChunkFilePath, s3Object.Body);
   }
 
   // write manifest
+  console.log('Getting manifest from s3');
   let s3Object = await s3.getObject({
     Bucket: transcodedChunksBucket,
     Key: `${jobId}/manifest.ffcat`
   }).promise();
-  console.log('manifest body', s3Object);
 
   //write file to disk
 
   writeFileSync(localManifestPath, s3Object.Body);
   console.log('post get/write manifest and pre merge')
 
-  // merge files stored on lambda
+  console.log('getting original video: ', `${filename}${inputFormat}`);
+
+  // get original video
+  s3Object = await s3.getObject({
+    Bucket: 'bento-video-start',
+    Key: `${filename}${inputFormat}`
+  }).promise();
+
+  // save original video to /tmp
+  writeFileSync(localOriginalFilePath, s3Object.Body)
+
+  // merge files stored on lambda and save to /tmp
   spawnSync(
     "/opt/ffmpeg/ffmpeg",
     [
@@ -118,13 +126,28 @@ module.exports.simpleMerge = async (event) => {
     ],
     { stdio: "inherit" }
   );
+
+  spawnSync(
+    "/opt/ffmpeg/ffmpeg",
+    [
+      "-i", localMasterFilePath,
+      "-i", localOriginalFilePath,
+      "-c", "copy",
+      "-map", "0:v",
+      "-map", "1:a",
+      localFinalFilePath
+    ]
+  )
+
   // read concatenated file from disk
-  const masterFile = readFileSync(localMasterFilePath);
+  const finalFile = readFileSync(localFinalFilePath);
 
   console.log('masterFile has been read');
   // delete the tmp files
   unlinkSync(localMasterFilePath);
   unlinkSync(localManifestPath);
+  unlinkSync(localOriginalFilePath)
+  unlinkSync(localFinalFilePath)
 
   for (let num = 0; num < chunkCount; num += 1) {
     let digitCount = String(num).length;
@@ -151,7 +174,7 @@ module.exports.simpleMerge = async (event) => {
       Bucket: endBucket,
       Key: `${jobId}-${filename}${fileFormat}`,
 
-      Body: masterFile
+      Body: finalFile
     })
     .promise();
 
