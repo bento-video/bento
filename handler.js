@@ -183,12 +183,13 @@ module.exports.simpleMerge = async (event) => {
   const putParams = {
     TableName: tableName,
     Key: { 'id': jobId },
-    UpdateExpression: "set #s = :stat",
+    UpdateExpression: "set #s = :stat, completedAt = :time" 
     ExpressionAttributeNames: {
       "#s": "status"
     },
     ExpressionAttributeValues: {
       ":stat": "completed"
+      "completedAt": Date.now()
     },
     ReturnValues: `UPDATED_NEW`
   };
