@@ -45,6 +45,7 @@ module.exports.simpleMerge = async (event) => {
     Key: { id: jobId }
   };
 
+  // get job data
   const jobData = await getJobData(dbQueryParams);
 
   const jobStartTime = jobData.Item.createdAt;
@@ -52,6 +53,7 @@ module.exports.simpleMerge = async (event) => {
   const fileFormat = jobData.Item.outputType;
   const chunkCount = jobData.Item.totalTasks;
   const filename = jobData.Item.filename;
+  const hasAudio = jobData.Item.hasAudio;
 
   const localMasterFilePath = `/tmp/${filename}${fileFormat}`;
   const localFinalFilePath = `/tmp/${filename}-final${fileFormat}`;
@@ -78,7 +80,7 @@ module.exports.simpleMerge = async (event) => {
     let s3chunkKey = `${jobId}/${jobId}-${chunkFileSuffix}`;
     let localChunkFilePath = localChunkFilePrefix + chunkFileSuffix;
 
-    console.log('Getting s3chunkKey ', s3chunkKey, ' from ', transcodedChunksBucket);
+    console.log('Getting segment', s3chunkKey, ' from ', transcodedChunksBucket);
     console.log('localChunkFilePath', localChunkFilePath);
 
     let s3Object = await s3.getObject({
@@ -86,7 +88,7 @@ module.exports.simpleMerge = async (event) => {
       Key: s3chunkKey
     }).promise();
     //write file to disk
-    console.log('Received chunk body:', s3Object);
+    //console.log('Received chunk body:', s3Object);
 
     console.log('Attempting write to : ', localChunkFilePath);
     writeFileSync(localChunkFilePath, s3Object.Body);
@@ -100,22 +102,27 @@ module.exports.simpleMerge = async (event) => {
   }).promise();
 
   //write file to disk
-
+  console.log('writing to ', localManifestPath);
   writeFileSync(localManifestPath, s3Object.Body);
   console.log('post get/write manifest and pre merge');
 
   console.log('getting original video: ', `${filename}${inputFormat}`);
 
   // get original video
-  s3Object = await s3.getObject({
-    Bucket: 'bento-video-start',
-    Key: `${filename}${inputFormat}`
-  }).promise();
+  if (hasAudio) {
+    s3Object = await s3.getObject({
+      Bucket: 'bento-video-start',
+      Key: `${filename}${inputFormat}`
+    }).promise();
 
-  // save original video to /tmp
-  writeFileSync(localOriginalFilePath, s3Object.Body);
+    console.log('saving original to ', localOriginalFilePath);
+    // save original video to /tmp
+    writeFileSync(localOriginalFilePath, s3Object.Body);
+  }
+
 
   // merge files stored on lambda and save to /tmp
+  console.log('merging segments into a single video at ', localMasterFilePath);
   spawnSync(
     "/opt/ffmpeg/ffmpeg",
     [
@@ -128,27 +135,42 @@ module.exports.simpleMerge = async (event) => {
     { stdio: "inherit" }
   );
 
-  spawnSync(
-    "/opt/ffmpeg/ffmpeg",
-    [
-      "-i", localMasterFilePath,
-      "-i", localOriginalFilePath,
-      "-c", "copy",
-      "-map", "0:v",
-      "-map", "1:a",
-      localFinalFilePath
-    ]
-  );
+  let finalFile;
 
-  // read concatenated file from disk
-  const finalFile = readFileSync(localFinalFilePath);
+  if (hasAudio) {
+    // combine merged segments video stream and original audio stream
+    console.log(`combining video stream at ${localMasterFilePath} with audio at ${localOriginalFilePath}, saving to ${localFinalFilePath}`);
+    spawnSync(
+      "/opt/ffmpeg/ffmpeg",
+      [
+        "-i", localMasterFilePath,
+        "-i", localOriginalFilePath,
+        "-c", "copy",
+        "-map", "0:v",
+        "-map", "1:a",
+        localFinalFilePath
+      ]
+    );
+
+    console.log('reading from ', localFinalFilePath);
+    // read concatenated file from disk
+    finalFile = readFileSync(localFinalFilePath);
+  } else {
+    console.log('reading from ', localMasterFilePath);
+    // read concatenated file from disk
+    finalFile = readFileSync(localMasterFilePath);
+  }
+
 
   console.log('masterFile has been read');
   // delete the tmp files
   unlinkSync(localMasterFilePath);
   unlinkSync(localManifestPath);
-  unlinkSync(localOriginalFilePath);
-  unlinkSync(localFinalFilePath);
+
+  if (hasAudio) {
+    unlinkSync(localOriginalFilePath);
+    unlinkSync(localFinalFilePath);
+  }
 
   for (let num = 0; num < chunkCount; num += 1) {
     let digitCount = String(num).length;
