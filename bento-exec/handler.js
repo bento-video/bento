@@ -37,7 +37,10 @@ const probeVideo = filepath => {
   const result = spawnSync(
     '/opt/ffmpeg/ffprobe',
     [
-      "-show_entries", "packet=pos,pts_time,flags", "-select_streams", "v", "-of", "compact=p=0:nk=1", "-print_format", "json", "-show_format", "-show_streams", `${filepath}`
+      "-show_entries", "packet=pos,pts_time,flags",
+      "-of", "compact=p=0:nk=1",
+      "-print_format", "json",
+      "-show_format", "-show_streams", `${filepath}`
     ],
     { stdio: "pipe", stderr: "pipe" }
   );
@@ -54,15 +57,17 @@ const probeVideo = filepath => {
   console.log(`Trying to read file at: ${jsonPath}`);
   const probeData = readFileSync(jsonPath);
   if (probeData) {
+    console.log(`Here is the probeData: ${probeData}`);
     console.log('Returning probeData:', JSON.parse(probeData));
   }
 
   return JSON.parse(probeData);
 };
 
-const saveJobData = (jobId, keyframeTimes, fileBasename, fileExt) => {
+const saveJobData = ({ jobId, keyframeTimes, streams, fileBasename, fileExt }) => {
 
   const totalTasks = keyframeTimes.length - 1;
+  const hasAudio = streams.indexOf("audio") !== -1;
   const params = {
     TableName: jobsTable,
     Item: {
@@ -73,6 +78,7 @@ const saveJobData = (jobId, keyframeTimes, fileBasename, fileExt) => {
       "status": "pending",
       "inputType": fileExt,
       "outputType": '.mp4',
+      "hasAudio": hasAudio,
       "createdAt": Date.now(),
       "completedAt": null
     }
@@ -162,9 +168,11 @@ module.exports.startPipeline = async (event) => {
       probeData.packets[probeData.packets.length - 1]
     ].map(kfPacket => kfPacket.pts_time);
 
+    const streams = probeData.streams.map(stream => stream.codec_type);
+
     console.log("Keyframe times: ", keyframeTimes)
 
-    saveJobData(jobId, keyframeTimes, fileBasename, fileExt);
+    saveJobData({ jobId, keyframeTimes, streams, fileBasename, fileExt });
     const segmentFilenames = saveSegmentsData(jobId, keyframeTimes);
     const manifest = writeToManifest(segmentFilenames);
 
