@@ -14,6 +14,9 @@ const transcodeLambdaAddress = process.env.TRANSCODE_LAMBDA_ADDRESS;
 const jobsTable = "Jobs";
 const segmentsTable = "Segments";
 const manifestPath = '/tmp/manifest.ffcat';
+const probeKeyframesPath = "/tmp/probeKeyframes.json"
+const probeStreamsPath = "/tmp/probeStreams.json"
+
 
 const getVideo = async (key, bucket) => {
 
@@ -30,39 +33,80 @@ const getVideo = async (key, bucket) => {
   return path;
 };
 
-const probeVideo = filepath => {
-  const jsonPath = `${filepath}.json`
-  console.log('Probing ', filepath, ' saving to ', jsonPath)
+const probeVideoTest = filepath => {
+  const command = `/opt/ffmpeg/ffprobe -show_entries packet=pos,pts_time,flags -select_streams v -of compact=p=0:nk=1  -print_format json -show_format -show_streams "${filepath}" > "${probeKeyframesPath}"`
 
-  const result = spawnSync(
-    '/opt/ffmpeg/ffprobe',
-    [
-      "-show_entries", "packet=pos,pts_time,flags",
-      "-of", "compact=p=0:nk=1",
-      "-print_format", "json",
-      "-show_format", "-show_streams", `${filepath}`
-    ],
-    { stdio: "pipe", stderr: "pipe" }
-  );
-
-  console.log("Result is:", result.stdout.toString(), result.stderr.toString());
-
-  writeFileSync(jsonPath, result.stdout, err => {
-    if (err) {
-      console.log(err)
+  execSync(command, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`exec error: ${error}`);
+      return;
     }
-    console.log("success?")
-  })
+    console.log(`stdout: ${stdout.toString()}`);
+    console.error(`stderr: ${stderr.toString()}`);
+  });
 
-  console.log(`Trying to read file at: ${jsonPath}`);
-  const probeData = readFileSync(jsonPath);
+  console.log(`Trying to read file at: ${probeKeyframesPath}`);
+  const probeData = readFileSync(probeKeyframesPath);
   if (probeData) {
-    console.log(`Here is the probeData: ${probeData}`);
-    console.log('Returning probeData:', JSON.parse(probeData));
+    // console.log(`Here is the probeData: ${probeData}`);
+    // console.log('Returning probeData:', JSON.parse(probeData));
+    console.log('Returning probeData!');
   }
 
   return JSON.parse(probeData);
-};
+}
+
+
+const probeStreams = filepath => {
+  const command = `/opt/ffmpeg/ffprobe ${filepath} -of compact=p=0:nk=1  -print_format json -show_streams > ${probeStreamsPath}`
+
+  console.log('Probing for stream data at path ', probeStreamsPath);
+
+  execSync(command, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`exec error: ${error}`);
+      return;
+    }
+    console.log(`Success!`);
+  });
+
+  console.log('returning streams data')
+  return JSON.parse(readFileSync(probeStreamsPath));
+}
+
+// const probeVideo = filepath => {
+//   const jsonPath = `${filepath}.json`
+//   console.log('Probing ', filepath, ' saving to ', jsonPath)
+
+//   const result = spawnSync(
+//     '/opt/ffmpeg/ffprobe',
+//     [
+//       "-show_entries", "packet=pos,pts_time,flags",
+//       "-of", "compact=p=0:nk=1",
+//       "-print_format", "json",
+//       "-show_format", "-show_streams", `${filepath}`
+//     ],
+//     { stdio: "pipe", stderr: "pipe" }
+//   );
+
+//   console.log("Result is:", result.stdout.toString(), result.stderr.toString());
+
+//   writeFileSync(jsonPath, result.stdout, err => {
+//     if (err) {
+//       console.log(err)
+//     }
+//     console.log("success?")
+//   })
+
+//   console.log(`Trying to read file at: ${jsonPath}`);
+//   const probeData = readFileSync(jsonPath);
+//   if (probeData) {
+//     console.log(`Here is the probeData: ${probeData}`);
+//     console.log('Returning probeData:', JSON.parse(probeData));
+//   }
+
+//   return JSON.parse(probeData);
+// };
 
 const saveJobData = ({ jobId, keyframeTimes, streams, fileBasename, fileExt }) => {
 
@@ -161,22 +205,21 @@ module.exports.startPipeline = async (event) => {
 
     const videoPath = await getVideo(videoKey, videoBucket);
 
-    const probeData = probeVideo(videoPath);
+    const probeData = probeVideoTest(videoPath);
 
     const keyframeTimes = [
       ...probeData.packets.filter(p => p.flags === 'K_'),
       probeData.packets[probeData.packets.length - 1]
     ].map(kfPacket => kfPacket.pts_time);
 
-    const streams = probeData.streams.map(stream => stream.codec_type);
+    const streams = probeStreams(videoPath).streams.map(stream => stream.codec_type);
 
     console.log("Keyframe times: ", keyframeTimes)
+    console.log('Streams: ', streams);
 
     saveJobData({ jobId, keyframeTimes, streams, fileBasename, fileExt });
     const segmentFilenames = saveSegmentsData(jobId, keyframeTimes);
     const manifest = writeToManifest(segmentFilenames);
-
-
 
     await s3
       .putObject({
@@ -212,7 +255,7 @@ module.exports.startPipeline = async (event) => {
     }
 
     unlinkSync(manifestPath)
-    unlinkSync(`${videoPath}.json`)
+    unlinkSync(probeKeyframesPath)
     unlinkSync(videoPath)
   }
 
