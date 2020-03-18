@@ -74,40 +74,6 @@ const probeStreams = filepath => {
   return JSON.parse(readFileSync(probeStreamsPath));
 }
 
-// const probeVideo = filepath => {
-//   const jsonPath = `${filepath}.json`
-//   console.log('Probing ', filepath, ' saving to ', jsonPath)
-
-//   const result = spawnSync(
-//     '/opt/ffmpeg/ffprobe',
-//     [
-//       "-show_entries", "packet=pos,pts_time,flags",
-//       "-of", "compact=p=0:nk=1",
-//       "-print_format", "json",
-//       "-show_format", "-show_streams", `${filepath}`
-//     ],
-//     { stdio: "pipe", stderr: "pipe" }
-//   );
-
-//   console.log("Result is:", result.stdout.toString(), result.stderr.toString());
-
-//   writeFileSync(jsonPath, result.stdout, err => {
-//     if (err) {
-//       console.log(err)
-//     }
-//     console.log("success?")
-//   })
-
-//   console.log(`Trying to read file at: ${jsonPath}`);
-//   const probeData = readFileSync(jsonPath);
-//   if (probeData) {
-//     console.log(`Here is the probeData: ${probeData}`);
-//     console.log('Returning probeData:', JSON.parse(probeData));
-//   }
-
-//   return JSON.parse(probeData);
-// };
-
 const saveJobData = ({ jobId, keyframeTimes, streams, fileBasename, fileExt }) => {
 
   const totalTasks = keyframeTimes.length - 1;
@@ -184,6 +150,8 @@ const writeToManifest = (filenames) => {
 }
 
 module.exports.startPipeline = async (event) => {
+  global.gc(); // for garbage collection in warm lambda
+
   if (!event.Records) {
     console.log("not an s3 invocation!");
     return;
