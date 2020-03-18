@@ -1,5 +1,5 @@
 const { spawnSync } = require("child_process");
-const { mkdirSync, readFileSync, writeFileSync, unlinkSync } = require("fs");
+const { readFileSync, writeFileSync, unlinkSync } = require("fs");
 const AWS = require("aws-sdk");
 const s3 = new AWS.S3();
 
@@ -47,6 +47,7 @@ module.exports.simpleMerge = async (event) => {
 
   const jobData = await getJobData(dbQueryParams);
 
+  const jobStartTime = jobData.Item.createdAt;
   const inputFormat = jobData.Item.inputType;
   const fileFormat = jobData.Item.outputType;
   const chunkCount = jobData.Item.totalTasks;
@@ -54,7 +55,7 @@ module.exports.simpleMerge = async (event) => {
 
   const localMasterFilePath = `/tmp/${filename}${fileFormat}`;
   const localFinalFilePath = `/tmp/${filename}-final${fileFormat}`;
-  const localOriginalFilePath = `/tmp/${filename}-original${inputFormat}`
+  const localOriginalFilePath = `/tmp/${filename}-original${inputFormat}`;
   const localManifestPath = `/tmp/manifest.ffcat`;
 
   const localChunkFilePrefix = `/tmp/${jobId}-`;
@@ -77,8 +78,8 @@ module.exports.simpleMerge = async (event) => {
     let s3chunkKey = `${jobId}/${jobId}-${chunkFileSuffix}`;
     let localChunkFilePath = localChunkFilePrefix + chunkFileSuffix;
 
-    console.log('Getting s3chunkKey ', s3chunkKey, ' from ', transcodedChunksBucket)
-    console.log('localChunkFilePath', localChunkFilePath)
+    console.log('Getting s3chunkKey ', s3chunkKey, ' from ', transcodedChunksBucket);
+    console.log('localChunkFilePath', localChunkFilePath);
 
     let s3Object = await s3.getObject({
       Bucket: transcodedChunksBucket,
@@ -101,7 +102,7 @@ module.exports.simpleMerge = async (event) => {
   //write file to disk
 
   writeFileSync(localManifestPath, s3Object.Body);
-  console.log('post get/write manifest and pre merge')
+  console.log('post get/write manifest and pre merge');
 
   console.log('getting original video: ', `${filename}${inputFormat}`);
 
@@ -112,7 +113,7 @@ module.exports.simpleMerge = async (event) => {
   }).promise();
 
   // save original video to /tmp
-  writeFileSync(localOriginalFilePath, s3Object.Body)
+  writeFileSync(localOriginalFilePath, s3Object.Body);
 
   // merge files stored on lambda and save to /tmp
   spawnSync(
@@ -137,7 +138,7 @@ module.exports.simpleMerge = async (event) => {
       "-map", "1:a",
       localFinalFilePath
     ]
-  )
+  );
 
   // read concatenated file from disk
   const finalFile = readFileSync(localFinalFilePath);
@@ -146,8 +147,8 @@ module.exports.simpleMerge = async (event) => {
   // delete the tmp files
   unlinkSync(localMasterFilePath);
   unlinkSync(localManifestPath);
-  unlinkSync(localOriginalFilePath)
-  unlinkSync(localFinalFilePath)
+  unlinkSync(localOriginalFilePath);
+  unlinkSync(localFinalFilePath);
 
   for (let num = 0; num < chunkCount; num += 1) {
     let digitCount = String(num).length;
@@ -163,7 +164,7 @@ module.exports.simpleMerge = async (event) => {
     let localChunkFilePath = localChunkFilePrefix + chunkFileSuffix;
 
     console.log('unlinking');
-    console.log('localChunkFilePath', localChunkFilePath)
+    console.log('localChunkFilePath', localChunkFilePath);
 
     unlinkSync(localChunkFilePath);
   }
@@ -180,16 +181,23 @@ module.exports.simpleMerge = async (event) => {
 
   // update job status on DB to completed
 
+  const jobEndTime = Date.now();
+  const timeToCompleteSeconds = (jobEndTime - jobStartTime) / 1000;
+  // const timeToCompleteMinutes = Math.floor(timeToCompleteSeconds / 60);
+  // const remainingSeconds = Math.floor(timeToCompleteSeconds % 60);
+  // const jobTimeToComplete = `${timeToCompleteMinutes}:${remainingSeconds}`;
+
   const putParams = {
     TableName: tableName,
     Key: { 'id': jobId },
-    UpdateExpression: "set #s = :stat, completedAt = :time" 
+    UpdateExpression: "set #s = :stat, completedAt = :completedAt, timeToComplete = :timeToComplete",
     ExpressionAttributeNames: {
       "#s": "status"
     },
     ExpressionAttributeValues: {
-      ":stat": "completed"
-      "completedAt": Date.now()
+      ":stat": "completed",
+      ":completedAt": jobEndTime,
+      ":timeToComplete": timeToCompleteSeconds
     },
     ReturnValues: `UPDATED_NEW`
   };
