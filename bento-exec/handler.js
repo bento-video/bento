@@ -74,7 +74,7 @@ const probeStreams = filepath => {
   return JSON.parse(readFileSync(probeStreamsPath));
 }
 
-const saveJobData = ({ jobId, keyframeTimes, streams, fileBasename, fileExt }) => {
+const saveJobData = ({ jobId, keyframeTimes, streams, fileBasename, fileExt, simulateInvoke }) => {
 
   const totalTasks = keyframeTimes.length - 1;
   const hasAudio = streams.indexOf("audio") !== -1;
@@ -94,10 +94,10 @@ const saveJobData = ({ jobId, keyframeTimes, streams, fileBasename, fileExt }) =
     }
   };
 
-  dbWriter(params, 'job');
+  dbWriter(params, 'job', simulateInvoke);
 };
 
-const saveSegmentsData = (jobId, keyframeTimes) => {
+const saveSegmentsData = ({ jobId, keyframeTimes, simulateInvoke }) => {
 
   let segmentNum = 0;
   const filenames = [];
@@ -119,14 +119,18 @@ const saveSegmentsData = (jobId, keyframeTimes) => {
         "completedAt": null
       }
     };
-    dbWriter(params, 'segment')
+    dbWriter(params, 'segment', simulateInvoke)
   }
 
   return filenames;
 }
 
 
-const dbWriter = (params, item) => {
+const dbWriter = (params, item, simulateInvoke) => {
+  if (simulateInvoke) {
+    console.log(`Simulating write to ${item} table with params ${params}`);
+    return;
+  }
   console.log(`Adding a new ${item} with params...`, params);
   DDB.put(params, (err, data) => {
     if (err) {
@@ -203,23 +207,26 @@ module.exports.startPipeline = async (event) => {
 
     const streams = probeStreams(videoPath).streams.map(stream => stream.codec_type);
 
+    const simulateInvoke = segmentFilenames.length >= INVOKE_LIMIT;
+
     console.log("Keyframe times: ", keyframeTimes)
     console.log('Streams: ', streams);
 
-    saveJobData({ jobId, keyframeTimes, streams, fileBasename, fileExt });
-    const segmentFilenames = saveSegmentsData(jobId, keyframeTimes);
+
+    saveJobData({ jobId, keyframeTimes, streams, fileBasename, fileExt, simulateInvoke });
+    const segmentFilenames = saveSegmentsData({ jobId, keyframeTimes, simulateInvoke });
     const manifest = writeToManifest(segmentFilenames);
 
-    await s3
-      .putObject({
-        Bucket: transcodedBucket,
-        Key: `${jobId}/manifest.ffcat`,
-        Body: manifest
-      })
-      .promise();
-
-
-    const simulateInvoke = segmentFilenames.length >= INVOKE_LIMIT;
+    if (!simulateInvoke) {
+      console.log('Putting manifest in transcoded bucket')
+      await s3
+        .putObject({
+          Bucket: transcodedBucket,
+          Key: `${jobId}/manifest.ffcat`,
+          Body: manifest
+        })
+        .promise();
+    }
 
     console.log(`${segmentFilenames.length} segments to transcode. ${simulateInvoke ? 'Simulating...' : 'Beginning invocation...'}`)
 
@@ -241,6 +248,4 @@ module.exports.startPipeline = async (event) => {
     unlinkSync(probeKeyframesPath)
     unlinkSync(videoPath)
   }
-
-
 };
