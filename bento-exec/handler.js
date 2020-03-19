@@ -207,7 +207,7 @@ module.exports.startPipeline = async (event) => {
 
     const streams = probeStreams(videoPath).streams.map(stream => stream.codec_type);
 
-    const simulateInvoke = segmentFilenames.length >= INVOKE_LIMIT;
+    const simulateInvoke = keyframeTimes.length - 1 >= INVOKE_LIMIT;
 
     console.log("Keyframe times: ", keyframeTimes)
     console.log('Streams: ', streams);
