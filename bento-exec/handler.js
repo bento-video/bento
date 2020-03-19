@@ -2,7 +2,6 @@
 const path = require('path');
 const { spawnSync } = require("child_process");
 const { execSync } = require("child_process");
-const { readFileSync, writeFileSync, unlinkSync, createWriteStream } = require("fs");
 const AWS = require("aws-sdk");
 const s3 = new AWS.S3();
 const DDB = new AWS.DynamoDB.DocumentClient();
@@ -16,6 +15,7 @@ const segmentsTable = "Segments";
 const manifestPath = '/tmp/manifest.ffcat';
 const probeKeyframesPath = "/tmp/probeKeyframes.json"
 const probeStreamsPath = "/tmp/probeStreams.json"
+const INVOKE_LIMIT = 200;
 
 
 const getVideo = async (key, bucket) => {
@@ -62,7 +62,7 @@ const probeStreams = filepath => {
 
   console.log('Probing for stream data at path ', probeStreamsPath);
 
-  execSync(command, (error, stdout, stderr) => {
+  execSync(command, (error) => {
     if (error) {
       console.error(`exec error: ${error}`);
       return;
@@ -149,6 +149,28 @@ const writeToManifest = (filenames) => {
   return readFileSync(manifestPath)
 }
 
+const invokeTranscode = async (payload, simulateInvoke) => {
+  const invokeParams = {
+    FunctionName: transcodeLambdaAddress,
+    InvocationType: "Event",
+    LogType: 'None',
+    ClientContext: 'BentoExec',
+  };
+
+  invokeParams['Payload'] = JSON.stringify(payload);
+
+  if (simulateInvoke) {
+    console.log('Simulating invoke of bento-transcode with the payload: ', invokeParams);
+    return;
+  }
+
+  console.log('Invoking bento-transcode with payload: ', invokeParams);
+
+  await lambda.invoke(invokeParams, (err, data) => {
+    console.log(`${err ? err : data}`)
+  }).promise();
+}
+
 module.exports.startPipeline = async (event) => {
   global.gc(); // for garbage collection in warm lambda
 
@@ -162,7 +184,6 @@ module.exports.startPipeline = async (event) => {
       console.log("not an s3 invocation!");
       continue;
     }
-
 
     const [videoKey, videoBucket] = [record.s3.object.key, record.s3.bucket.name];
     const filePathObj = path.parse(`${videoKey}`);
@@ -197,12 +218,10 @@ module.exports.startPipeline = async (event) => {
       })
       .promise();
 
-    const invokeParams = {
-      FunctionName: transcodeLambdaAddress,
-      InvocationType: "Event",
-      LogType: 'None',
-      ClientContext: 'BentoExec',
-    };
+
+    simulateInvoke = segmentFilenames.length >= INVOKE_LIMIT;
+
+    console.log(`${segmentFilenames.length} segments to transcode. ${simulateInvoke ? 'Simulating...' : 'Beginning invocation...'}`)
 
     for (let idx = 0; idx < segmentFilenames.length; idx += 1) {
       const payload = {
@@ -214,12 +233,8 @@ module.exports.startPipeline = async (event) => {
           endTime: keyframeTimes[idx + 1]
         }
       };
-      invokeParams['Payload'] = JSON.stringify(payload);
-      console.log('Invoking bento-transcode with payload: ', invokeParams);
 
-      await lambda.invoke(invokeParams, (err, data) => {
-        console.log(`${err ? err : data}`)
-      }).promise();
+      await invokeTranscode(payload, simulateInvoke)
     }
 
     unlinkSync(manifestPath)
