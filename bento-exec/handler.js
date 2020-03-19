@@ -1,7 +1,7 @@
 'use strict';
 const path = require('path');
-const { spawnSync } = require("child_process");
 const { execSync } = require("child_process");
+const { readFileSync, writeFileSync, unlinkSync } = require("fs");
 const AWS = require("aws-sdk");
 const s3 = new AWS.S3();
 const DDB = new AWS.DynamoDB.DocumentClient();
@@ -62,7 +62,7 @@ const probeStreams = filepath => {
 
   console.log('Probing for stream data at path ', probeStreamsPath);
 
-  execSync(command, (error) => {
+  execSync(command, (error, stdout, stderr) => {
     if (error) {
       console.error(`exec error: ${error}`);
       return;
@@ -219,7 +219,7 @@ module.exports.startPipeline = async (event) => {
       .promise();
 
 
-    simulateInvoke = segmentFilenames.length >= INVOKE_LIMIT;
+    const simulateInvoke = segmentFilenames.length >= INVOKE_LIMIT;
 
     console.log(`${segmentFilenames.length} segments to transcode. ${simulateInvoke ? 'Simulating...' : 'Beginning invocation...'}`)
 
