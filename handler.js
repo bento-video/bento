@@ -167,11 +167,19 @@ const unlinkMergedVideo = (mergedPath) => {
 }
 
 const unlinkOriginalVideo = (originalVideoPath, jobData) => {
-  if (!jobData.hasAudio) {
+  if (jobData.hasAudio) {
     return;
   }
   console.log(`Unlinking  ${originalVideoPath}`)
   unlinkSync(originalVideoPath);
+}
+
+const unlinkOriginalAudio = (originalAudioPath, jobData) => {
+  if (!jobData.hasAudio) {
+    return;
+  }
+  console.log(`Unlinking  ${originalAudioPath}`)
+  unlinkSync(originalAudioPath);
 }
 
 const putCompletedVideoInBucket = async (jobData, completedVideoPath) => {
@@ -243,7 +251,12 @@ module.exports.simpleMerge = async (event) => {
 
   buildCompletedVideo(videoPaths, jobData);
   unlinkMergedVideo(videoPaths.mergedPath);
-  unlinkOriginalVideo(videoPaths.originalPath, jobData)
+  if (jobData.hasAudio) {
+    unlinkOriginalAudio(videoPaths.audioPath, jobData)
+  } else {
+    unlinkOriginalVideo(videoPaths.originalPath, jobData)
+  }
+
 
   await putCompletedVideoInBucket(jobData, videoPaths.completedPath)
   await recordJobCompleted(jobData);
