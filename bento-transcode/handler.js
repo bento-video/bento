@@ -19,19 +19,20 @@ const transcodeVideo = async (segmentData) => {
   console.log('In transcodeVideo fx: ', segmentData);
 
   // get the file
-  const s3Object = await s3
-    .getObject({
-      Bucket: startBucketName,
-      Key: segmentData.videoKey
-    })
-    .promise();
-  const inputPath = `/tmp/${segmentData.videoKey}`
+  // const s3Object = await s3
+  //   .getObject({
+  //     Bucket: startBucketName,
+  //     Key: segmentData.videoKey
+  //   })
+  //   .promise();
+  // const inputPath = `/tmp/${segmentData.videoKey}`
   const outputPath = `/tmp/${segmentData.segmentName}-transcoded.mp4`
-  console.log(`Writing to ${inputPath}`)
+  // console.log(`Writing to ${inputPath}`)
 
-  // write file to disk
-  writeFileSync(inputPath, s3Object.Body);
-  // convert to mp4!
+  // // write file to disk
+  // writeFileSync(inputPath, s3Object.Body);
+  // // convert to mp4!
+  const inputPath = `https://s3.amazonaws.com/${startBucketName}/${segmentData.videoKey}`
 
   console.log(`Spawning ffmpeg transcoding, inputPath is: ${inputPath}  outputPath is: ${outputPath}`)
 
@@ -56,7 +57,7 @@ const transcodeVideo = async (segmentData) => {
 
   console.log(`Trying to delete ${inputPath}`)
 
-  unlinkSync(inputPath);
+  //unlinkSync(inputPath);
   // upload mp4 to s3
   // upload as 12345/12345-001.mp4
   await s3
