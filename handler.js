@@ -105,6 +105,25 @@ const getOriginalVideo = async (originalVideoPath, jobData) => {
   writeFileSync(originalVideoPath, s3Object.Body);
 }
 
+const getOriginalAudio = async (originalAudioPath, jobData) => {
+  const { id, audioType, audioKey, hasAudio } = jobData
+  if (!hasAudio) {
+    console.log(`Video has no audio stream: won't fetch original audio.`)
+    return;
+  }
+  console.log(`Retrieving original audio from transcoded bucket: ${audioKey}`);
+
+  // get original audio
+  let s3Object = await s3.getObject({
+    Bucket: transcodedChunksBucket,
+    Key: audioKey
+  }).promise();
+
+  console.log(`Writing original audio to ${originalAudioPath}`)
+  // save original audio to /tmp
+  writeFileSync(originalAudioPath, s3Object.Body);
+}
+
 const mergeSegmentsIntoVideo = mergedSegmentsPath => {
   // merge segments into single file and save to /tmp
   console.log(`Merging segments into single video, saving to ${mergedSegmentsPath}`)
@@ -127,12 +146,13 @@ const buildCompletedVideo = (videoPaths, jobData) => {
     videoPaths.completedPath = videoPaths.mergedPath;
     return;
   }
-  const { mergedPath, originalPath, completedPath } = videoPaths
+  // const { mergedPath, originalPath, completedPath } = videoPaths
+  const { mergedPath, audioPath, completedPath } = videoPaths
   spawnSync(
     "/opt/ffmpeg/ffmpeg",
     [
       "-i", mergedPath,
-      "-i", originalPath,
+      "-i", audioPath,
       "-c", "copy",
       "-map", "0:v",
       "-map", "1:a",
@@ -163,7 +183,7 @@ const putCompletedVideoInBucket = async (jobData, completedVideoPath) => {
   console.log('Completed file read into memory, unlinking file at path ', completedVideoPath);
   unlinkSync(completedVideoPath);
 
-  const completedKey = `${jobId}-${filename}${outputType}`;
+  const completedKey = `${jobId} - ${filename}${outputType}`;
   console.log(`Putting completed video ${completedKey} in bucket ${endBucket}`);
   await s3
     .putObject({
@@ -203,11 +223,12 @@ module.exports.simpleMerge = async (event) => {
   let jobData = await getJobData(jobId);
   jobData = { ...jobData.Item };
 
-  const { inputType, outputType, filename } = jobData;
+  const { inputType, outputType, audioType, filename } = jobData;
 
   const videoPaths = {
     mergedPath: `/tmp/${filename}-Merged${outputType}`,
     originalPath: `/tmp/${filename}-Original${inputType}`,
+    audioPath: `/tmp/${filename}-Audio${audioType}`,
     completedPath: `/tmp/${filename}-Completed${outputType}`
   }
 
@@ -217,7 +238,8 @@ module.exports.simpleMerge = async (event) => {
   mergeSegmentsIntoVideo(videoPaths.mergedPath);
   unlinkSegmentsAndManifest(jobData)
 
-  await getOriginalVideo(videoPaths.originalPath, jobData)
+  // await getOriginalVideo(videoPaths.originalPath, jobData)
+  await getOriginalAudio(videoPaths.audioPath, jobData)
 
   buildCompletedVideo(videoPaths, jobData);
   unlinkMergedVideo(videoPaths.mergedPath);
