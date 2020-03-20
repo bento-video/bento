@@ -74,11 +74,9 @@ const probeStreams = filepath => {
   return JSON.parse(readFileSync(probeStreamsPath));
 }
 
-const saveJobData = ({ jobId, keyframeTimes, streamData, fileBasename, fileExt, simulateInvoke }) => {
+const saveJobData = ({ jobId, keyframeTimes, hasAudio, audioData, fileBasename, fileExt, simulateInvoke }) => {
 
-  const streams = streamData.map(stream => stream.codec_type);
   const totalTasks = keyframeTimes.length - 1;
-  const hasAudio = streams.indexOf("audio") !== -1;
   const params = {
     TableName: jobsTable,
     Item: {
@@ -90,6 +88,8 @@ const saveJobData = ({ jobId, keyframeTimes, streamData, fileBasename, fileExt, 
       "inputType": fileExt,
       "outputType": '.mp4',
       "hasAudio": hasAudio,
+      "audioType": hasAudio ? `.${audioData.extension}` : null,
+      "audioKey": hasAudio ? audioData.audioKey : null,
       "createdAt": Date.now(),
       "completedAt": null
     }
@@ -129,7 +129,7 @@ const saveSegmentsData = ({ jobId, keyframeTimes, simulateInvoke }) => {
 
 const dbWriter = (params, item, simulateInvoke) => {
   if (simulateInvoke) {
-    console.log(`Simulating write to ${item} table with params ${params}`);
+    console.log(`Simulating write to ${item} table with params ${JSON.stringify(params)}`);
     return;
   }
   console.log(`Adding a new ${item} with params...`, params);
@@ -176,6 +176,14 @@ const invokeTranscode = async (payload, simulateInvoke) => {
   }).promise();
 }
 
+const extractAndSaveAudio = async ({ videoPath, jobId, streamData }) => {
+  const audioData = extractAudio({ videoPath, jobId, streamData });
+  const audioKey = await putAudio(audioData, jobId);
+  unlinkSync(audioData.path);
+
+  return { ...audioData, audioKey };
+}
+
 const extractAudio = ({ videoPath, jobId, streamData }) => {
   const extension = streamData.filter(stream => stream.codec_type === 'audio')[0].codec_name;
   const audioPath = `/tmp/${jobId}-audio.${extension}`
@@ -207,6 +215,8 @@ const putAudio = async (audioData, jobId) => {
     Key: key,
     Body: audioFile
   }).promise();
+
+  return key;
 }
 
 module.exports.startPipeline = async (event) => {
@@ -241,15 +251,24 @@ module.exports.startPipeline = async (event) => {
     const simulateInvoke = event.simulateInvoke || keyframeTimes.length - 1 >= INVOKE_LIMIT;
 
     const streamData = probeStreams(videoPath).streams
+    const hasAudio = streamData.map(stream => stream.codec_type).indexOf("audio") !== -1;
 
     console.log("Keyframe times: ", keyframeTimes)
     console.log('Streams: ', streamData);
 
-    const audioData = extractAudio({ videoPath, streamData, jobId });
-    await putAudio(audioData, jobId);
-    unlinkSync(audioData.path);
+    const audioData = hasAudio ?
+      await extractAndSaveAudio({ videoPath, jobId, streamData }) :
+      { path: null, extension: null };
 
-    saveJobData({ jobId, keyframeTimes, streamData, fileBasename, fileExt, simulateInvoke });
+    saveJobData({
+      jobId,
+      keyframeTimes,
+      hasAudio,
+      audioData,
+      fileBasename,
+      fileExt,
+      simulateInvoke
+    });
 
     const segmentFilenames = saveSegmentsData({ jobId, keyframeTimes, simulateInvoke });
 
