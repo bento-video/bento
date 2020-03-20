@@ -148,6 +148,7 @@ const recordTransaction = async (segmentData) => {
 }
 */
 module.exports.transcodeVideo = async (event) => {
+  const simulateInvoke = event.simulateInvoke;
   if (!event.segmentData) {
     console.log("not an bento-exec invocation!");
     return;
@@ -166,31 +167,39 @@ module.exports.transcodeVideo = async (event) => {
       "jobId": segmentData.jobId,
       "id": segmentData.segmentId
     }
-  }
+  };
 
-  const getJobStateParams = {
-    TableName: jobsTable,
-    Key: {
-      "id": segmentData.jobId
-    },
-    ConsistentRead: true      // for strongly consistent reads
-  }
-  // grab subtask data from DDB
-  // NOTE: DDB.get returns an empty object if it can't find a record that matches the query. must test for this condition
-  const subtaskData = await DDB.get(getSubTaskParams).promise()
-    .then(data => {
-      console.log("Get subtask succeeded:", JSON.stringify(data, null, 2));
-      return data;
-    })
-    .catch(err => console.error("Unable to read item. Error JSON:", JSON.stringify(err, null, 2)));
+  if (simulateInvoke) {
+    console.log('Simulating invoke: Skipping segment table read.');
+  } else {
+    const getJobStateParams = {
+      TableName: jobsTable,
+      Key: {
+        "id": segmentData.jobId
+      },
+      ConsistentRead: true      // for strongly consistent reads
+    }
+    // grab subtask data from DDB
+    // NOTE: DDB.get returns an empty object if it can't find a record that matches the query. must test for this condition
+    const subtaskData = await DDB.get(getSubTaskParams).promise()
+      .then(data => {
+        console.log("Get subtask succeeded:", JSON.stringify(data, null, 2));
+        return data;
+      })
+      .catch(err => console.error("Unable to read item. Error JSON:", JSON.stringify(err, null, 2)));
 
-  // if segment already transcoded, exit function
-  if (!subtaskData.Item.status || subtaskData.Item.status !== 'pending') {
-    console.log("Segment not in pending state. Current status: ", subtaskData.Item.status)
-    return;
+    // if segment already transcoded, exit function
+    if (!subtaskData.Item.status || subtaskData.Item.status !== 'pending') {
+      console.log("Segment not in pending state. Current status: ", subtaskData.Item.status)
+      return;
+    }
   }
 
   await transcodeVideo(segmentData);
+  if (simulateInvoke) {
+    console.log('Transcode simulation complete! Exiting..');
+    return;
+  }
   const transactionResult = await recordTransaction(segmentData);
 
   const mergeParams = {
