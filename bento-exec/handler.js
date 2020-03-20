@@ -19,7 +19,7 @@ const INVOKE_LIMIT = 200;
 
 
 const getVideo = async (key, bucket) => {
-
+  console.log(`Getting ${key} from ${bucket}`);
   const videoObject = await s3.getObject({
     Bucket: bucket,
     Key: key
@@ -33,7 +33,7 @@ const getVideo = async (key, bucket) => {
   return path;
 };
 
-const probeVideoTest = filepath => {
+const probeVideo = filepath => {
   const command = `/opt/ffmpeg/ffprobe -show_entries packet=pos,pts_time,flags -select_streams v -of compact=p=0:nk=1  -print_format json -show_format -show_streams "${filepath}" > "${probeKeyframesPath}"`
 
   execSync(command, (error, stdout, stderr) => {
@@ -74,8 +74,9 @@ const probeStreams = filepath => {
   return JSON.parse(readFileSync(probeStreamsPath));
 }
 
-const saveJobData = ({ jobId, keyframeTimes, streams, fileBasename, fileExt, simulateInvoke }) => {
+const saveJobData = ({ jobId, keyframeTimes, streamData, fileBasename, fileExt, simulateInvoke }) => {
 
+  const streams = streamData.map(stream => stream.codec_type);
   const totalTasks = keyframeTimes.length - 1;
   const hasAudio = streams.indexOf("audio") !== -1;
   const params = {
@@ -175,6 +176,39 @@ const invokeTranscode = async (payload, simulateInvoke) => {
   }).promise();
 }
 
+const extractAudio = ({ videoPath, jobId, streamData }) => {
+  const extension = streamData.filter(stream => stream.codec_type === 'audio')[0].codec_name;
+  const audioPath = `/tmp/${jobId}-audio.${extension}`
+
+  const command = `/opt/ffmpeg/ffmpeg -i ${videoPath} -vn -acodec copy ${audioPath}`
+
+  console.log(`Extracting audio from ${videoPath}, saving to ${audioPath}`)
+
+  execSync(command, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`exec error: ${error}`);
+    }
+  });
+
+  console.log('Saved audio!')
+  return {
+    path: audioPath,
+    extension
+  };
+}
+
+const putAudio = async (audioData, jobId) => {
+  const { path, extension } = audioData;
+  const audioFile = readFileSync(path);
+  const key = `${jobId}/${jobId}-audio.${extension}`
+  console.log(`Putting audio file at ${path} in ${transcodedBucket}`)
+  await s3.putObject({
+    Bucket: transcodedBucket,
+    Key: key,
+    Body: audioFile
+  }).promise();
+}
+
 module.exports.startPipeline = async (event) => {
   global.gc(); // for garbage collection in warm lambda
 
@@ -197,24 +231,28 @@ module.exports.startPipeline = async (event) => {
     console.log('Firing up pipeline for ', videoKey, videoBucket)
 
     const videoPath = await getVideo(videoKey, videoBucket);
-
-    const probeData = probeVideoTest(videoPath);
+    const probeData = probeVideo(videoPath);
 
     const keyframeTimes = [
       ...probeData.packets.filter(p => p.flags === 'K_'),
       probeData.packets[probeData.packets.length - 1]
     ].map(kfPacket => kfPacket.pts_time);
 
-    const streams = probeStreams(videoPath).streams.map(stream => stream.codec_type);
+    const simulateInvoke = event.simulateInvoke || keyframeTimes.length - 1 >= INVOKE_LIMIT;
 
-    const simulateInvoke = keyframeTimes.length - 1 >= INVOKE_LIMIT;
+    const streamData = probeStreams(videoPath).streams
 
     console.log("Keyframe times: ", keyframeTimes)
-    console.log('Streams: ', streams);
+    console.log('Streams: ', streamData);
 
+    const audioData = extractAudio({ videoPath, streamData, jobId });
+    await putAudio(audioData, jobId);
+    unlinkSync(audioData.path);
 
-    saveJobData({ jobId, keyframeTimes, streams, fileBasename, fileExt, simulateInvoke });
+    saveJobData({ jobId, keyframeTimes, streamData, fileBasename, fileExt, simulateInvoke });
+
     const segmentFilenames = saveSegmentsData({ jobId, keyframeTimes, simulateInvoke });
+
     const manifest = writeToManifest(segmentFilenames);
 
     if (!simulateInvoke) {
