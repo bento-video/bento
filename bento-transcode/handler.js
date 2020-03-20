@@ -18,7 +18,6 @@ const tasksTable = "Segments";
 const transcodeVideo = async (segmentData) => {
   console.log('In transcodeVideo fx: ', segmentData);
 
-  // get the file
   // const s3Object = await s3
   //   .getObject({
   //     Bucket: startBucketName,
@@ -26,13 +25,13 @@ const transcodeVideo = async (segmentData) => {
   //   })
   //   .promise();
   // const inputPath = `/tmp/${segmentData.videoKey}`
-  const outputPath = `/tmp/${segmentData.segmentName}-transcoded.mp4`
   // console.log(`Writing to ${inputPath}`)
+
+  const inputPath = `https://s3.amazonaws.com/${startBucketName}/${segmentData.videoKey}`
+  const outputPath = `/tmp/${segmentData.segmentName}-transcoded.mp4`
 
   // // write file to disk
   // writeFileSync(inputPath, s3Object.Body);
-  // // convert to mp4!
-  const inputPath = `https://s3.amazonaws.com/${startBucketName}/${segmentData.videoKey}`
 
   console.log(`Spawning ffmpeg transcoding, inputPath is: ${inputPath}  outputPath is: ${outputPath}`)
 
@@ -42,24 +41,21 @@ const transcodeVideo = async (segmentData) => {
       "-i", inputPath,
       "-ss", segmentData.startTime,
       "-to", segmentData.endTime,
-      "-c:v", "libx264", "-c:a", "aac", outputPath
+      "-c:v", "libx264", "-an", outputPath
     ],
     { stdio: "inherit" }
   )
-
-  console.log(`Trying to read file at: ${outputPath}`)
   // read file from disk
+  console.log(`Trying to read file at: ${outputPath}`)
   const transcodedVideo = readFileSync(outputPath);
-  // delete the temp files
-  console.log(`Trying to delete ${outputPath}`)
 
+  // delete local files
+  console.log(`Trying to delete ${outputPath}`)
   unlinkSync(outputPath);
 
   console.log(`Trying to delete ${inputPath}`)
+  // unlinkSync(inputPath);
 
-  //unlinkSync(inputPath);
-  // upload mp4 to s3
-  // upload as 12345/12345-001.mp4
   await s3
     .putObject({
       Bucket: outputBucketName,
@@ -103,17 +99,9 @@ const recordTransaction = async (segmentData) => {
     ReturnValues: "UPDATED_NEW"
   };
 
-  const params = {
-    TransactItems: [
-      {
-        Update: subTaskParams
-      }, {
-        Update: jobParams
-      }
-    ]
-  };
 
-  console.log('Attempting write to db: ', JSON.stringify(params));
+
+  console.log('Attempting write to segments table: ', JSON.stringify(subTaskParams));
   let transactionResult = await DDB.update(subTaskParams).promise()
     .then(data => {
       console.log("UpdateItem succeeded:", JSON.stringify(data, null, 2));
@@ -125,6 +113,7 @@ const recordTransaction = async (segmentData) => {
     });
 
   if (transactionResult) {
+    console.log('Attempting write to jobs table: ', JSON.stringify(jobParams));
     return await DDB.update(jobParams).promise()
       .then(data => {
         console.log("UpdateItem succeeded:", JSON.stringify(data, null, 2));
@@ -160,25 +149,19 @@ module.exports.transcodeVideo = async (event) => {
   segmentData.segmentId = segmentData.segmentName.split('-')[1];  // => 000
   console.log(`Starting transcode function for ${JSON.stringify(segmentData)}`)
 
-  // create params for DDB queries
-  const getSubTaskParams = {
-    TableName: tasksTable,
-    Key: {
-      "jobId": segmentData.jobId,
-      "id": segmentData.segmentId
-    }
-  };
 
   if (simulateInvoke) {
     console.log('Simulating invoke: Skipping segment table read.');
   } else {
-    const getJobStateParams = {
-      TableName: jobsTable,
+    // create params for DDB queries
+    const getSubTaskParams = {
+      TableName: tasksTable,
       Key: {
-        "id": segmentData.jobId
-      },
-      ConsistentRead: true      // for strongly consistent reads
-    }
+        "jobId": segmentData.jobId,
+        "id": segmentData.segmentId
+      }
+    };
+
     // grab subtask data from DDB
     // NOTE: DDB.get returns an empty object if it can't find a record that matches the query. must test for this condition
     const subtaskData = await DDB.get(getSubTaskParams).promise()
@@ -200,38 +183,7 @@ module.exports.transcodeVideo = async (event) => {
     console.log('Transcode simulation complete! Exiting..');
     return;
   }
-  const transactionResult = await recordTransaction(segmentData);
-
-  const mergeParams = {
-    FunctionName: mergeLambdaAddress,
-    InvocationType: "Event",
-    Payload: JSON.stringify({ jobId: segmentData.jobId }),
-    LogType: 'None',
-    ClientContext: 'TranscodeFunction',
-  };
-
-  // get updated job and invoke merge lambda if all jobs show as completed 
-  const subtasksComplete = await DDB.get(getJobStateParams).promise()
-    .then(data => {
-      console.log("Get job succeeded:", JSON.stringify(data, null, 2));
-      if (data.Item.finishedTasks === data.Item.totalTasks) {
-        console.log("I'm the winner!")
-        return true;
-      }
-    })
-    .catch(err => console.error("Unable to read item. Error JSON:", JSON.stringify(err, null, 2)));
-
-  if (subtasksComplete) {
-    console.log('Attempting merge invoke...')
-
-    await lambda.invoke(mergeParams, (err, data) => {
-      if (err) {
-        console.error(JSON.stringify(err));
-      } else {
-        console.log(data);
-      }
-    }).promise()
-  }
+  await recordTransaction(segmentData);
 };
 
 
