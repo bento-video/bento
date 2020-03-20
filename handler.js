@@ -200,7 +200,7 @@ const recordJobCompleted = async ({ id: jobId, createdAt }) => {
 
 module.exports.simpleMerge = async (event) => {
   const jobId = event.jobId;
-  const jobData = await getJobData(jobId);
+  let jobData = await getJobData(jobId);
   jobData = { ...jobData.Item };
 
   const { inputType, outputType, filename } = jobData;
