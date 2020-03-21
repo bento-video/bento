@@ -18,23 +18,8 @@ const probeStreamsPath = "/tmp/probeStreams.json"
 const INVOKE_LIMIT = 200;
 
 
-const getVideo = async (key, bucket) => {
-  console.log(`Getting ${key} from ${bucket}`);
-  const videoObject = await s3.getObject({
-    Bucket: bucket,
-    Key: key
-  }).promise();
-
-  const path = `/tmp/${key}`;
-  console.log(`Writing file to ${path}`);
-
-  writeFileSync(path, videoObject.Body);
-
-  return path;
-};
-
-const probeVideo = filepath => {
-  const command = `/opt/ffmpeg/ffprobe -show_entries packet=pos,pts_time,flags -select_streams v -of compact=p=0:nk=1  -print_format json -show_format -show_streams "${filepath}" > "${probeKeyframesPath}"`
+const probeVideo = objectUrl => {
+  const command = `/opt/ffmpeg/ffprobe -show_entries packet=pos,pts_time,flags -select_streams v -of compact=p=0:nk=1  -print_format json -show_format -show_streams "${objectUrl}" > "${probeKeyframesPath}"`
 
   execSync(command, (error, stdout, stderr) => {
     if (error) {
@@ -57,8 +42,8 @@ const probeVideo = filepath => {
 }
 
 
-const probeStreams = filepath => {
-  const command = `/opt/ffmpeg/ffprobe ${filepath} -of compact=p=0:nk=1  -print_format json -show_streams > ${probeStreamsPath}`
+const probeStreams = objectUrl => {
+  const command = `/opt/ffmpeg/ffprobe ${objectUrl} -of compact=p=0:nk=1  -print_format json -show_streams > ${probeStreamsPath}`
 
   console.log('Probing for stream data at path ', probeStreamsPath);
 
@@ -176,21 +161,26 @@ const invokeTranscode = async (payload, simulateInvoke) => {
   }).promise();
 }
 
-const extractAndSaveAudio = async ({ videoPath, jobId, streamData }) => {
-  const audioData = extractAudio({ videoPath, jobId, streamData });
+const extractAndSaveAudio = async (objectUrl, jobId, streamData) => {
+  console.log("objectUrl", objectUrl)
+
+  console.log("jobId", jobId)
+
+  const audioData = extractAudio({ objectUrl, jobId, streamData });
   const audioKey = await putAudio(audioData, jobId);
   unlinkSync(audioData.path);
 
   return { ...audioData, audioKey };
 }
 
-const extractAudio = ({ videoPath, jobId, streamData }) => {
+const extractAudio = ({ objectUrl, jobId, streamData }) => {
   const extension = streamData.filter(stream => stream.codec_type === 'audio')[0].codec_name;
   const audioPath = `/tmp/${jobId}-audio.${extension}`
 
-  const command = `/opt/ffmpeg/ffmpeg -i ${videoPath} -vn -acodec copy ${audioPath}`
+  const command = `/opt/ffmpeg/ffmpeg -i ${objectUrl} -vn -acodec copy ${audioPath}`
 
-  console.log(`Extracting audio from ${videoPath}, saving to ${audioPath}`)
+  console.log("object URL", objectUrl)
+  console.log(`Extracting audio from ${objectUrl}, saving to ${audioPath}`)
 
   execSync(command, (error, stdout, stderr) => {
     if (error) {
@@ -238,26 +228,40 @@ module.exports.startPipeline = async (event) => {
     const [fileBasename, fileExt] = [filePathObj.name, filePathObj.ext];
     const jobId = `${Date.now()}`;
 
+
+
+    const inputPath = `https://${videoBucket}.s3.amazonaws.com/${videoKey}`;
+    console.log("inputPath", inputPath)
+
     console.log('Firing up pipeline for ', videoKey, videoBucket)
+    const probeData = probeVideo(inputPath);
 
-    const videoPath = await getVideo(videoKey, videoBucket);
-    const probeData = probeVideo(videoPath);
-
-    const keyframeTimes = [
+    // Overlapping end/start times
+    let keyframeTimes = [
       ...probeData.packets.filter(p => p.flags === 'K_'),
       probeData.packets[probeData.packets.length - 1]
     ].map(kfPacket => kfPacket.pts_time);
 
-    const simulateInvoke = event.simulateInvoke || keyframeTimes.length - 1 >= INVOKE_LIMIT;
+    console.log(`keyframeTimes: ${keyframeTimes}`);
 
-    const streamData = probeStreams(videoPath).streams
+
+    // keyframeTimes = keyframeTimes.reduce((segments, cur, idx) => {
+    //   return idx < keyframeTimes.length - 1 ? [...segments, [cur, keyframeTimes[idx + 1]]] : segments;
+    // }, [])
+
+
+    const simulateInvoke = event.simulateInvoke || keyframeTimes.length >= INVOKE_LIMIT;
+
+    const streamData = probeStreams(inputPath).streams
     const hasAudio = streamData.map(stream => stream.codec_type).indexOf("audio") !== -1;
 
     console.log("Keyframe times: ", keyframeTimes)
     console.log('Streams: ', streamData);
+    console.log("inputPath", inputPath)
+    console.log("jobId", jobId)
 
     const audioData = hasAudio ?
-      await extractAndSaveAudio({ videoPath, jobId, streamData }) :
+      await extractAndSaveAudio(inputPath, jobId, streamData) :
       { path: null, extension: null };
 
     saveJobData({
@@ -303,6 +307,5 @@ module.exports.startPipeline = async (event) => {
 
     unlinkSync(manifestPath)
     unlinkSync(probeKeyframesPath)
-    unlinkSync(videoPath)
   }
 };
