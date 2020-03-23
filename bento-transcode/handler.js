@@ -1,16 +1,12 @@
 'use strict';
-const path = require('path');
 const { spawnSync } = require("child_process");
-const { readFileSync, writeFileSync, unlinkSync } = require("fs");
+const { readFileSync, unlinkSync } = require("fs");
 const AWS = require("aws-sdk");
 const outputBucketName = process.env.TRANSCODED_VIDEO_BUCKET;
 const startBucketName = process.env.START_VIDEO_BUCKET;
-const mergeLambdaAddress = process.env.MERGE_LAMBDA_ARN;
 const s3 = new AWS.S3();
 const DDB = new AWS.DynamoDB.DocumentClient();
-const lambda = new AWS.Lambda({
-  region: "us-east-1"
-});
+
 const jobsTable = "Jobs";
 const tasksTable = "Segments";
 
