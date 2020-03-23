@@ -18,20 +18,10 @@ const tasksTable = "Segments";
 const transcodeVideo = async (segmentData) => {
   console.log('In transcodeVideo fx: ', segmentData);
 
-  // const s3Object = await s3
-  //   .getObject({
-  //     Bucket: startBucketName,
-  //     Key: segmentData.videoKey
-  //   })
-  //   .promise();
-  // const inputPath = `/tmp/${segmentData.videoKey}`
-  // console.log(`Writing to ${inputPath}`)
 
   const inputPath = `https://s3.amazonaws.com/${startBucketName}/${segmentData.videoKey}`
   const outputPath = `/tmp/${segmentData.segmentName}-transcoded.mp4`
 
-  // // write file to disk
-  // writeFileSync(inputPath, s3Object.Body);
 
   console.log(`Spawning ffmpeg transcoding, inputPath is: ${inputPath}  outputPath is: ${outputPath}`)
 
@@ -41,7 +31,7 @@ const transcodeVideo = async (segmentData) => {
       "-i", inputPath,
       "-ss", segmentData.startTime,
       "-to", segmentData.endTime,
-      "-c:v", "libx264", "-an", outputPath
+      "-c:v", "libx264", "-c:a", "copy", outputPath
     ],
     { stdio: "inherit" }
   )
@@ -98,7 +88,6 @@ const recordTransaction = async (segmentData) => {
     },
     ReturnValues: "UPDATED_NEW"
   };
-
 
 
   console.log('Attempting write to segments table: ', JSON.stringify(subTaskParams));
