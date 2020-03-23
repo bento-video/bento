@@ -152,18 +152,6 @@
               }
             }
           },
-          "FfmpegLambdaLayer": {
-            "Type": "AWS::Lambda::LayerVersion",
-            "Properties": {
-              "Content": {
-                "S3Bucket": {
-                  "Ref": "ServerlessDeploymentBucket"
-                },
-                "S3Key": "serverless/simpleMerge/dev/1584038083220-2020-03-12T18:34:43.220Z/ffmpeg.zip"
-              },
-              "LayerName": "ffmpeg"
-            }
-          },
           "SimpleMergeLambdaFunction": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
@@ -171,7 +159,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/simpleMerge/dev/1584038083220-2020-03-12T18:34:43.220Z/simpleMerge.zip"
+                "S3Key": "serverless/simpleMerge/dev/1584905697444-2020-03-22T19:34:57.444Z/simpleMerge.zip"
               },
               "FunctionName": "simpleMerge-dev-simpleMerge",
               "Handler": "handler.simpleMerge",
@@ -184,10 +172,17 @@
               },
               "Runtime": "nodejs12.x",
               "Timeout": 900,
-              "Layers": [
-                {
-                  "Ref": "FfmpegLambdaLayer"
+              "Environment": {
+                "Variables": {
+                  "TRANSCODED_CHUNKS_BUCKET": "bento-transcoded-segments",
+                  "END_BUCKET": "bento-video-end",
+                  "LD_LIBRARY_PATH": "/opt/awscli/lib",
+                  "PYTHONHOME": "/opt/awscli/lib/python2.7",
+                  "PYTHONPATH": "/opt/awscli/lib/python2.7:/opt/awscli/lib/python2.7/lib-dynload"
                 }
+              },
+              "Layers": [
+                "arn:aws:lambda:us-east-1:247910611346:layer:ffmpeg:3"
               ]
             },
             "DependsOn": [
@@ -195,14 +190,14 @@
               "IamRoleLambdaExecution"
             ]
           },
-          "SimpleMergeLambdaVersionjvnvTwcDSm9If4gGwIRCf3ZwgWijV68ykMFxjj9gU": {
+          "SimpleMergeLambdaVersionGxWymWBO4rNBZKyn9NqulLkkJ45loFHJNRRHQc": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "SimpleMergeLambdaFunction"
               },
-              "CodeSha256": "CdSK/cODx9q5B6DcW0bs70j1Cmqx8OdTZH/lbWrU6U0="
+              "CodeSha256": "JgnuhdN5N2GxA7DOCY1p1MYFYSponV6WoLhpS6slv08="
             }
           }
         },
@@ -212,16 +207,10 @@
               "Ref": "ServerlessDeploymentBucket"
             }
           },
-          "FfmpegLambdaLayerQualifiedArn": {
-            "Description": "Current Lambda layer version",
-            "Value": {
-              "Ref": "FfmpegLambdaLayer"
-            }
-          },
           "SimpleMergeLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "SimpleMergeLambdaVersionjvnvTwcDSm9If4gGwIRCf3ZwgWijV68ykMFxjj9gU"
+              "Ref": "SimpleMergeLambdaVersionGxWymWBO4rNBZKyn9NqulLkkJ45loFHJNRRHQc"
             }
           }
         }
@@ -295,39 +284,41 @@
       },
       "vpc": {}
     },
+    "custom": {
+      "transcoded-chunks-bucket": "bento-transcoded-segments",
+      "end-bucket": "bento-video-end"
+    },
     "pluginsData": {},
     "functions": {
       "simpleMerge": {
         "handler": "handler.simpleMerge",
+        "environment": {
+          "TRANSCODED_CHUNKS_BUCKET": "bento-transcoded-segments",
+          "END_BUCKET": "bento-video-end",
+          "LD_LIBRARY_PATH": "/opt/awscli/lib",
+          "PYTHONHOME": "/opt/awscli/lib/python2.7",
+          "PYTHONPATH": "/opt/awscli/lib/python2.7:/opt/awscli/lib/python2.7/lib-dynload"
+        },
+        "timeout": 900,
         "layers": {
           "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"SimpleMergeLambdaFunction\"][\"Properties\"][\"Layers\"]"
         },
         "events": [],
         "name": "simpleMerge-dev-simpleMerge",
-        "package": {
-          "artifact": "/Users/owner/Documents/simple_merge/.serverless/simpleMerge.zip"
-        },
+        "package": {},
         "memory": 1024,
-        "timeout": 900,
         "runtime": "nodejs12.x",
         "vpc": {},
-        "versionLogicalId": "SimpleMergeLambdaVersionjvnvTwcDSm9If4gGwIRCf3ZwgWijV68ykMFxjj9gU"
+        "versionLogicalId": "SimpleMergeLambdaVersionGxWymWBO4rNBZKyn9NqulLkkJ45loFHJNRRHQc"
       }
     },
     "serviceFilename": "serverless.yml",
-    "layers": {
-      "ffmpeg": {
-        "path": "layer",
-        "package": {
-          "artifact": "/Users/owner/Documents/simple_merge/.serverless/ffmpeg.zip"
-        }
-      }
-    },
-    "isDashboardMonitoringPreconfigured": false
+    "layers": {},
+    "isDashboardMonitoringPreconfigured": false,
+    "artifact": "/Users/mkwh/Documents/LS/Capstone/video_project/aws/concat-prototype/.serverless/simpleMerge.zip"
   },
   "package": {
-    "individually": true,
-    "artifactDirectoryName": "serverless/simpleMerge/dev/1584038083220-2020-03-12T18:34:43.220Z",
-    "artifact": ""
+    "artifactDirectoryName": "serverless/simpleMerge/dev/1584905697444-2020-03-22T19:34:57.444Z",
+    "artifact": "simpleMerge.zip"
   }
 }

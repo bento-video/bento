@@ -17,8 +17,8 @@ provider:
   #       - s3:PutObject
   #     Resource: "arn:aws:S3:::${self:custom.upload-bucket}/*"
 
-package:
-  individually: true
+# package:
+#   individually: true
 
 custom:
   transcoded-chunks-bucket: bento-transcoded-segments
@@ -30,11 +30,10 @@ functions:
     environment:
       TRANSCODED_CHUNKS_BUCKET: "${self:custom.transcoded-chunks-bucket}"
       END_BUCKET: "${self:custom.end-bucket}"
-      
+      LD_LIBRARY_PATH: "/opt/awscli/lib"
+      PYTHONHOME: "/opt/awscli/lib/python2.7"
+      PYTHONPATH: "/opt/awscli/lib/python2.7:/opt/awscli/lib/python2.7/lib-dynload"
     timeout: 900
     layers:
-      - { Ref: FfmpegLambdaLayer }
+      - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
 
-layers:
-  ffmpeg:
-    path: layer
