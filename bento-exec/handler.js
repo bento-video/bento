@@ -15,7 +15,6 @@ const segmentsTable = "Segments";
 const manifestPath = '/tmp/manifest.ffcat';
 const probeKeyframesPath = "/tmp/probeKeyframes.json"
 const probeStreamsPath = "/tmp/probeStreams.json"
-const INVOKE_LIMIT = 200;
 
 
 const probeVideo = objectUrl => {
@@ -42,24 +41,7 @@ const probeVideo = objectUrl => {
 }
 
 
-const probeStreams = objectUrl => {
-  const command = `/opt/ffmpeg/ffprobe ${objectUrl} -of compact=p=0:nk=1  -print_format json -show_streams > ${probeStreamsPath}`
-
-  console.log('Probing for stream data at path ', probeStreamsPath);
-
-  execSync(command, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`exec error: ${error}`);
-      return;
-    }
-    console.log(`Success!`);
-  });
-
-  console.log('returning streams data')
-  return JSON.parse(readFileSync(probeStreamsPath));
-}
-
-const saveJobData = ({ jobId, keyframeTimes, hasAudio, audioData, fileBasename, fileExt, simulateInvoke }) => {
+const saveJobData = ({ jobId, keyframeTimes, fileBasename, fileExt, simulateInvoke }) => {
 
   const totalTasks = keyframeTimes.length - 1;
   const params = {
@@ -72,9 +54,6 @@ const saveJobData = ({ jobId, keyframeTimes, hasAudio, audioData, fileBasename, 
       "status": "pending",
       "inputType": fileExt,
       "outputType": '.mp4',
-      "hasAudio": hasAudio,
-      "audioType": hasAudio ? `.${audioData.extension}` : null,
-      "audioKey": hasAudio ? audioData.audioKey : null,
       "createdAt": Date.now(),
       "completedAt": null
     }
@@ -127,10 +106,12 @@ const dbWriter = (params, item, simulateInvoke) => {
   });
 }
 
-const writeToManifest = (filenames) => {
+const writeToManifest = (filenames, jobId) => {
+  const segmentPath = `file https://bento-transcoded-segments.s3.amazonaws.com/${jobId}/`
   let manifest = ""
   for (let segment of filenames) {
-    manifest += `file ${segment}.mp4\n`;
+    // manifest += `file ${segment}.mp4\n`;
+    manifest += `${segmentPath}${segment}.mp4\n`;
   }
   console.log('writing manifest: ', manifest);
   writeFileSync(manifestPath, manifest, err => {
@@ -161,55 +142,10 @@ const invokeTranscode = async (payload, simulateInvoke) => {
   }).promise();
 }
 
-const extractAndSaveAudio = async (objectUrl, jobId, streamData) => {
-  console.log("objectUrl", objectUrl)
-
-  console.log("jobId", jobId)
-
-  const audioData = extractAudio({ objectUrl, jobId, streamData });
-  const audioKey = await putAudio(audioData, jobId);
-  unlinkSync(audioData.path);
-
-  return { ...audioData, audioKey };
-}
-
-const extractAudio = ({ objectUrl, jobId, streamData }) => {
-  const extension = streamData.filter(stream => stream.codec_type === 'audio')[0].codec_name;
-  const audioPath = `/tmp/${jobId}-audio.${extension}`
-
-  const command = `/opt/ffmpeg/ffmpeg -i ${objectUrl} -vn -acodec copy ${audioPath}`
-
-  console.log("object URL", objectUrl)
-  console.log(`Extracting audio from ${objectUrl}, saving to ${audioPath}`)
-
-  execSync(command, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`exec error: ${error}`);
-    }
-  });
-
-  console.log('Saved audio!')
-  return {
-    path: audioPath,
-    extension
-  };
-}
-
-const putAudio = async (audioData, jobId) => {
-  const { path, extension } = audioData;
-  const audioFile = readFileSync(path);
-  const key = `${jobId}/${jobId}-audio.${extension}`
-  console.log(`Putting audio file at ${path} in ${transcodedBucket}`)
-  await s3.putObject({
-    Bucket: transcodedBucket,
-    Key: key,
-    Body: audioFile
-  }).promise();
-
-  return key;
-}
 
 module.exports.startPipeline = async (event) => {
+  const INVOKE_LIMIT = event.invokeLimit || 200;
+
   global.gc(); // for garbage collection in warm lambda
 
   if (!event.Records) {
@@ -229,7 +165,6 @@ module.exports.startPipeline = async (event) => {
     const jobId = `${Date.now()}`;
 
 
-
     const inputPath = `https://${videoBucket}.s3.amazonaws.com/${videoKey}`;
     console.log("inputPath", inputPath)
 
@@ -244,7 +179,7 @@ module.exports.startPipeline = async (event) => {
 
     console.log(`keyframeTimes: ${keyframeTimes}`);
 
-
+    // Reduces keyframe times into nested array pairs of start and end times. Stylistic choice, at this point
     // keyframeTimes = keyframeTimes.reduce((segments, cur, idx) => {
     //   return idx < keyframeTimes.length - 1 ? [...segments, [cur, keyframeTimes[idx + 1]]] : segments;
     // }, [])
@@ -252,23 +187,13 @@ module.exports.startPipeline = async (event) => {
 
     const simulateInvoke = event.simulateInvoke || keyframeTimes.length >= INVOKE_LIMIT;
 
-    const streamData = probeStreams(inputPath).streams
-    const hasAudio = streamData.map(stream => stream.codec_type).indexOf("audio") !== -1;
-
     console.log("Keyframe times: ", keyframeTimes)
-    console.log('Streams: ', streamData);
     console.log("inputPath", inputPath)
     console.log("jobId", jobId)
-
-    const audioData = hasAudio ?
-      await extractAndSaveAudio(inputPath, jobId, streamData) :
-      { path: null, extension: null };
 
     saveJobData({
       jobId,
       keyframeTimes,
-      hasAudio,
-      audioData,
       fileBasename,
       fileExt,
       simulateInvoke
@@ -276,7 +201,7 @@ module.exports.startPipeline = async (event) => {
 
     const segmentFilenames = saveSegmentsData({ jobId, keyframeTimes, simulateInvoke });
 
-    const manifest = writeToManifest(segmentFilenames);
+    const manifest = writeToManifest(segmentFilenames, jobId);
 
     if (!simulateInvoke) {
       console.log('Putting manifest in transcoded bucket')
