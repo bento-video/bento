@@ -1,4 +1,4 @@
-const { spawnSync } = require("child_process");
+const { spawnSync, execSync } = require("child_process");
 const { readFileSync, writeFileSync, unlinkSync } = require("fs");
 const AWS = require("aws-sdk");
 const s3 = new AWS.S3();
@@ -191,7 +191,7 @@ const putCompletedVideoInBucket = async (jobData, completedVideoPath) => {
   console.log('Completed file read into memory, unlinking file at path ', completedVideoPath);
   unlinkSync(completedVideoPath);
 
-  const completedKey = `${jobId} - ${filename}${outputType}`;
+  const completedKey = `${jobId}-${filename}${outputType}`;
   console.log(`Putting completed video ${completedKey} in bucket ${endBucket}`);
   await s3
     .putObject({
@@ -226,6 +226,29 @@ const recordJobCompleted = async ({ id: jobId, createdAt }) => {
   await writeJob(putParams);
 }
 
+const concatHttpToS3 = (jobData) => {
+  const { id: jobId, filename, outputType } = jobData;
+  const manifestPath = `https://bento-transcoded-segments.s3.amazonaws.com/${jobId}/manifest.ffcat`;
+  const videoKey = `${jobId}-${filename}${outputType}`;
+  const s3Path = `s3://bento-video-end/${videoKey}`;
+
+  console.log(`Attempting http concat with output to ${s3Path}`)
+
+  const command = `/opt/ffmpeg/ffmpeg -f concat -safe 0 -protocol_whitelist file,https,tls,tcp -i ${manifestPath} -c copy -f mp4 -movflags frag_keyframe+empty_moov pipe:1 | /opt/awscli/aws s3 cp - ${s3Path}`
+
+
+  execSync(command, err => {
+    if (err) {
+      console.log(err);
+      return false;
+    } else {
+      console.log("Sent to s3!");
+    }
+  });
+
+  return true;
+}
+
 module.exports.simpleMerge = async (event) => {
   const jobId = event.jobId;
   let jobData = await getJobData(jobId);
@@ -240,24 +263,27 @@ module.exports.simpleMerge = async (event) => {
     completedPath: `/tmp/${filename}-Completed${outputType}`
   }
 
-  await getSegments(jobData);
-  await getManifest(jobId);
-
-  mergeSegmentsIntoVideo(videoPaths.mergedPath);
-  unlinkSegmentsAndManifest(jobData)
-
-  // await getOriginalVideo(videoPaths.originalPath, jobData)
-  await getOriginalAudio(videoPaths.audioPath, jobData)
-
-  buildCompletedVideo(videoPaths, jobData);
-  unlinkMergedVideo(videoPaths.mergedPath);
-  if (jobData.hasAudio) {
-    unlinkOriginalAudio(videoPaths.audioPath, jobData)
-  } else {
-    unlinkOriginalVideo(videoPaths.originalPath, jobData)
-  }
-
-
-  await putCompletedVideoInBucket(jobData, videoPaths.completedPath)
+  concatHttpToS3(jobData);
+  /* All required for any local storage processing
+   await getSegments(jobData);
+   await getManifest(jobId);
+ 
+   mergeSegmentsIntoVideo(videoPaths.mergedPath);
+   unlinkSegmentsAndManifest(jobData)
+ 
+   // await getOriginalVideo(videoPaths.originalPath, jobData)
+   await getOriginalAudio(videoPaths.audioPath, jobData)
+ 
+   buildCompletedVideo(videoPaths, jobData);
+   unlinkMergedVideo(videoPaths.mergedPath);
+   if (jobData.hasAudio) {
+     unlinkOriginalAudio(videoPaths.audioPath, jobData)
+   } else {
+     unlinkOriginalVideo(videoPaths.originalPath, jobData)
+   }
+ 
+ 
+   await putCompletedVideoInBucket(jobData, videoPaths.completedPath)
+   */
   await recordJobCompleted(jobData);
 };
