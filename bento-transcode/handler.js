@@ -10,7 +10,6 @@ const DDB = new AWS.DynamoDB.DocumentClient();
 const jobsTable = "Jobs";
 const tasksTable = "Segments";
 
-
 const transcodeVideo = async (segmentData) => {
   console.log('In transcodeVideo fx: ', segmentData);
 
@@ -24,9 +23,9 @@ const transcodeVideo = async (segmentData) => {
   spawnSync(
     '/opt/ffmpeg/ffmpeg',
     [
-      "-i", inputPath,
       "-ss", segmentData.startTime,
       "-to", segmentData.endTime,
+      "-i", inputPath,
       "-c:v", "libx264", "-c:a", "copy", outputPath
     ],
     { stdio: "inherit" }
@@ -164,6 +163,7 @@ module.exports.transcodeVideo = async (event) => {
   }
 
   await transcodeVideo(segmentData);
+
   if (simulateInvoke) {
     console.log('Transcode simulation complete! Exiting..');
     return;
