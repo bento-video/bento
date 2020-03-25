@@ -40,10 +40,61 @@ const probeVideo = objectUrl => {
   return JSON.parse(probeData);
 }
 
+const getKeyframeTimes = probeData => {
+  // Original function, getting keyframes
+  let keyframeTimes = [
+    ...probeData.packets.filter(p => p.flags === 'K_'),
+    probeData.packets[probeData.packets.length - 1]
+  ].map(kfPacket => kfPacket.pts_time);
+
+
+  keyframeTimes = keyframeTimes.reduce((segments, cur, idx) => {
+    return idx < keyframeTimes.length - 1 ? [...segments, [cur, keyframeTimes[idx + 1]]] : segments;
+  }, [])
+
+  return keyframeTimes;
+};
+
+const getSafeKeyFrameTimes = probeData => {
+  let keyframeTimes = [
+    ...probeData.packets.filter(p => p.flags === 'K_'),
+    probeData.packets[probeData.packets.length - 1]
+  ].map(kfPacket => kfPacket.pts_time);
+
+  keyframeTimes = keyframeTimes.reduce((segments, cur, idx) => {
+    return idx < keyframeTimes.length - 1 ? [...segments, [cur, keyframeTimes[idx + 1]]] : segments;
+  }, []);
+
+  keyframeTimes.forEach(segment => {
+    segment[1] = (+segment[1] - .001).toFixed(3)
+  });
+
+  return keyframeTimes;
+}
+
+const getEvenSegments = probeData => {
+  // Alt approach, using standardized segment times regardless of keyframe data
+  const lastKeyframeTime = +probeData.packets[probeData.packets.length - 1].pts_time
+  const segmentTimes = [];
+
+  for (let sec = 0; sec < lastKeyframeTime; sec += 6) {
+    segmentTimes.push(String(sec));
+  }
+
+  segmentTimes.push(lastKeyframeTime);
+
+  segmentTimes = segmentTimes.reduce((segments, cur, idx) => {
+    return idx < segmentTimes.length - 1 ? [...segments, [cur, segmentTimes[idx + 1]]] : segments;
+  }, [])
+
+  return segmentTimes;
+}
+
+
 
 const saveJobData = ({ jobId, keyframeTimes, fileBasename, fileExt, simulateInvoke }) => {
 
-  const totalTasks = keyframeTimes.length - 1;
+  const totalTasks = keyframeTimes.length;
   const params = {
     TableName: jobsTable,
     Item: {
@@ -66,7 +117,7 @@ const saveSegmentsData = ({ jobId, keyframeTimes, simulateInvoke }) => {
 
   let segmentNum = 0;
   const filenames = [];
-  for (segmentNum; segmentNum < keyframeTimes.length - 1; segmentNum += 1) {
+  for (segmentNum; segmentNum < keyframeTimes.length; segmentNum += 1) {
     const id = String(segmentNum).padStart(3, '0');
     const filename = `${jobId}-${id}`;
     filenames.push(filename);
@@ -76,8 +127,8 @@ const saveSegmentsData = ({ jobId, keyframeTimes, simulateInvoke }) => {
       Item: {
         "jobId": jobId,
         "id": id,
-        "startTime": keyframeTimes[segmentNum],
-        "endTime": keyframeTimes[segmentNum + 1],
+        "startTime": keyframeTimes[segmentNum][0],
+        "endTime": keyframeTimes[segmentNum][1],
         "filename": filename,
         "status": "pending",
         "createdAt": Date.now(),
@@ -137,9 +188,7 @@ const invokeTranscode = async (payload, simulateInvoke) => {
 
   console.log('Invoking bento-transcode with payload: ', invokeParams);
 
-  await lambda.invoke(invokeParams, (err, data) => {
-    console.log(`${err ? err : data}`)
-  }).promise();
+  await lambda.invoke(invokeParams).promise();
 }
 
 
@@ -172,10 +221,7 @@ module.exports.startPipeline = async (event) => {
     const probeData = probeVideo(inputPath);
 
     // Overlapping end/start times
-    let keyframeTimes = [
-      ...probeData.packets.filter(p => p.flags === 'K_'),
-      probeData.packets[probeData.packets.length - 1]
-    ].map(kfPacket => kfPacket.pts_time);
+    let keyframeTimes = getKeyframeTimes(probeData)
 
     console.log(`keyframeTimes: ${keyframeTimes}`);
 
@@ -222,8 +268,8 @@ module.exports.startPipeline = async (event) => {
           videoKey: videoKey,
           jobId: jobId,
           segmentName: segmentFilenames[idx],
-          startTime: keyframeTimes[idx],
-          endTime: keyframeTimes[idx + 1]
+          startTime: keyframeTimes[idx][0],
+          endTime: keyframeTimes[idx][1]
         }
       };
 
