@@ -144,7 +144,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/simpleMerge/dev/1584905697444-2020-03-22T19:34:57.444Z/simpleMerge.zip"
+          "S3Key": "serverless/simpleMerge/dev/1585105581154-2020-03-25T03:06:21.154Z/simpleMerge.zip"
         },
         "FunctionName": "simpleMerge-dev-simpleMerge",
         "Handler": "handler.simpleMerge",
@@ -175,14 +175,14 @@
         "IamRoleLambdaExecution"
       ]
     },
-    "SimpleMergeLambdaVersionGxWymWBO4rNBZKyn9NqulLkkJ45loFHJNRRHQc": {
+    "SimpleMergeLambdaVersionCyaUXbXAuhKsPVwHaCNCp5H19InJKyfqJm9c0H8w": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "SimpleMergeLambdaFunction"
         },
-        "CodeSha256": "JgnuhdN5N2GxA7DOCY1p1MYFYSponV6WoLhpS6slv08="
+        "CodeSha256": "XIBtAk2gb1N6JNh2ZuXTlzcOcrmcbC23h/X2Oww14L4="
       }
     }
   },
@@ -195,7 +195,7 @@
     "SimpleMergeLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "SimpleMergeLambdaVersionGxWymWBO4rNBZKyn9NqulLkkJ45loFHJNRRHQc"
+        "Ref": "SimpleMergeLambdaVersionCyaUXbXAuhKsPVwHaCNCp5H19InJKyfqJm9c0H8w"
       }
     }
   }

@@ -1,4 +1,4 @@
-const { spawnSync, execSync } = require("child_process");
+const { spawn, spawnSync, execSync } = require("child_process");
 const { readFileSync, writeFileSync, unlinkSync } = require("fs");
 const AWS = require("aws-sdk");
 const s3 = new AWS.S3();
@@ -7,6 +7,8 @@ const transcodedChunksBucket = process.env.TRANSCODED_CHUNKS_BUCKET;
 const endBucket = process.env.END_BUCKET;
 const jobsTable = "Jobs";
 const manifestPath = `/tmp/manifest.ffcat`;
+
+// const { PassThrough } = require('stream');
 
 const getJobData = async jobId => {
   const dbQueryParams = {
@@ -226,7 +228,7 @@ const recordJobCompleted = async ({ id: jobId, createdAt }) => {
   await writeJob(putParams);
 }
 
-const concatHttpToS3 = (jobData) => {
+const concatHttpToS3 = async (jobData) => {
   const { id: jobId, filename, outputType } = jobData;
   const manifestPath = `https://bento-transcoded-segments.s3.amazonaws.com/${jobId}/manifest.ffcat`;
   const videoKey = `${jobId}-${filename}${outputType}`;
@@ -236,8 +238,7 @@ const concatHttpToS3 = (jobData) => {
 
   const command = `/opt/ffmpeg/ffmpeg -f concat -safe 0 -protocol_whitelist file,https,tls,tcp -i ${manifestPath} -c copy -f mp4 -movflags frag_keyframe+empty_moov pipe:1 | /opt/awscli/aws s3 cp - ${s3Path}`
 
-
-  execSync(command, err => {
+  execSync(command, { stdio: "ignore" }, err => {
     if (err) {
       console.log(err);
       return false;
@@ -250,6 +251,7 @@ const concatHttpToS3 = (jobData) => {
 }
 
 module.exports.simpleMerge = async (event) => {
+  const simulateInvoke = event.simulateInvoke;
   const jobId = event.jobId;
   let jobData = await getJobData(jobId);
   jobData = { ...jobData.Item };
@@ -264,6 +266,10 @@ module.exports.simpleMerge = async (event) => {
   }
 
   concatHttpToS3(jobData);
+  if (simulateInvoke) {
+    console.log(`Simulation complete, exiting!`);
+    return;
+  }
   /* All required for any local storage processing
    await getSegments(jobData);
    await getManifest(jobId);
