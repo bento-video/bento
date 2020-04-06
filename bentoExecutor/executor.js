@@ -8,13 +8,14 @@ const DDB = new AWS.DynamoDB.DocumentClient();
 const lambda = new AWS.Lambda({
   region: "us-east-1"
 });
-const transcodedBucket = process.env.TRANSCODED_VIDEO_BUCKET;
-const transcodeLambdaAddress = process.env.TRANSCODE_LAMBDA_ADDRESS;
+const transcodedBucket = process.env.TRANSCODED_SEGMENTS_BUCKET;
+const transcodeLambdaAddress = process.env.TRANSCODER_LAMBDA_ADDRESS;
 const jobsTable = "Jobs";
 const segmentsTable = "Segments";
 const manifestPath = '/tmp/manifest.ffcat';
 const probeKeyframesPath = "/tmp/probeKeyframes.json"
 const probeStreamsPath = "/tmp/probeStreams.json"
+const startBucket = process.env.NEW_VIDEO_BUCKET;
 
 
 const probeVideo = objectUrl => {
@@ -192,7 +193,7 @@ const invokeTranscode = async (payload, simulateInvoke) => {
 }
 
 
-module.exports.startPipeline = async (event) => {
+module.exports.execute = async (event) => {
   const INVOKE_LIMIT = event.invokeLimit || 200;
 
   global.gc(); // for garbage collection in warm lambda
@@ -213,12 +214,11 @@ module.exports.startPipeline = async (event) => {
     const [fileBasename, fileExt] = [filePathObj.name, filePathObj.ext];
     const jobId = `${Date.now()}`;
 
-
-    const inputPath = `https://${videoBucket}.s3.amazonaws.com/${videoKey}`;
-    console.log("inputPath", inputPath)
+    const signedParams = { Bucket: startBucket, Key: videoKey, Expires: 900 };
+    var signedInputUrl = s3.getSignedUrl('getObject', signedParams);
 
     console.log('Firing up pipeline for ', videoKey, videoBucket)
-    const probeData = probeVideo(inputPath);
+    const probeData = probeVideo(signedInputUrl);
 
     // Overlapping end/start times
     let keyframeTimes = getKeyframeTimes(probeData)
@@ -229,7 +229,6 @@ module.exports.startPipeline = async (event) => {
     // keyframeTimes = keyframeTimes.reduce((segments, cur, idx) => {
     //   return idx < keyframeTimes.length - 1 ? [...segments, [cur, keyframeTimes[idx + 1]]] : segments;
     // }, [])
-
 
     const simulateInvoke = event.simulateInvoke || keyframeTimes.length >= INVOKE_LIMIT;
 
