@@ -14,20 +14,37 @@ const transcodeVideo = async (segmentData) => {
   console.log('In transcodeVideo fx: ', segmentData);
 
 
-  const inputPath = `https://s3.amazonaws.com/${startBucketName}/${segmentData.videoKey}`
+  const inputPath = `https://s3.amazonaws.com/${startBucketName}/${segmentData.key}`
   const outputPath = `/tmp/${segmentData.segmentName}-transcoded.mp4`
 
 
   console.log(`Spawning ffmpeg transcoding, inputPath is: ${inputPath}  outputPath is: ${outputPath}`)
 
+  const signedParams = { Bucket: startBucketName, Key: segmentData.key, Expires: 900 };
+  var signedInputUrl = s3.getSignedUrl('getObject', signedParams);
+
+  const command = [
+    "-i", signedInputUrl,
+    "-ss", segmentData.startTime,
+    "-to", segmentData.endTime,
+    "-c:v", "libx264", "-c:a", "copy", outputPath
+  ]
+
+  if (segmentData.resolution !== "null") {
+    const [h, w] = segmentData.resolution.split(':');
+    command.splice(10, 0, "-vf", `scale=w=${w}:h=${h}`);
+    console.log('Added Resolution commands');
+  }
+
   spawnSync(
     '/opt/ffmpeg/ffmpeg',
-    [
-      "-ss", segmentData.startTime,
-      "-to", segmentData.endTime,
-      "-i", inputPath,
-      "-c:v", "libx264", "-c:a", "copy", outputPath
-    ],
+    command,
+    // [
+    //   "-ss", segmentData.startTime,
+    //   "-to", segmentData.endTime,
+    //   "-i", inputPath,
+    //   "-c:v", "libx264", "-c:a", "copy", outputPath
+    // ],
     { stdio: "inherit" }
   )
   // read file from disk
@@ -162,12 +179,13 @@ module.exports.transcode = async (event) => {
     }
   }
 
-  await transcodeVideo(segmentData);
-
   if (simulateInvoke) {
     console.log('Transcode simulation complete! Exiting..');
     return;
   }
+
+  await transcodeVideo(segmentData);
+
   await recordTransaction(segmentData);
 };
 
