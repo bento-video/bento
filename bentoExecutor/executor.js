@@ -198,84 +198,96 @@ module.exports.execute = async (event) => {
 
   global.gc(); // for garbage collection in warm lambda
 
-  if (!event.Records) {
-    console.log("not an s3 invocation!");
+  // if (!event.Records) {
+  //   console.log("not an s3 invocation!");  // replaced this conditional with conditional below, to utilize API to begin jobs
+  //   return;
+  // }
+
+  if (!event["body-json"]) { // augment later to perform additional checks for proper values in POST req body
+    console.log("not a valid invocation!");
     return;
   }
 
-  for (const record of event.Records) {
-    if (!record.s3) {
-      console.log("not an s3 invocation!");
-      continue;
-    }
+  // for (const record of event.Records) {  // this loop was needed only when this executor was invoked via s3 upload
+  //   if (!record.s3) {
+  //     console.log("not an s3 invocation!");
+  //     continue;
+  //   }
 
-    const [videoKey, videoBucket] = [record.s3.object.key, record.s3.bucket.name];
-    const filePathObj = path.parse(`${videoKey}`);
-    const [fileBasename, fileExt] = [filePathObj.name, filePathObj.ext];
-    const jobId = `${Date.now()}`;
+  const dataFromAPI = event['body-json'] ? event['body-json'] : false;
+  const { key, bucket, res } = { ...dataFromAPI };
 
-    const signedParams = { Bucket: startBucket, Key: videoKey, Expires: 900 };
-    var signedInputUrl = s3.getSignedUrl('getObject', signedParams);
+  console.log("EVENT IS: ", event);
+  console.log("API BODY IS: ", event['body-json']);
 
-    console.log('Firing up pipeline for ', videoKey, videoBucket)
-    const probeData = probeVideo(signedInputUrl);
+  // const [videoKey, videoBucket] = [record.s3.object.key, record.s3.bucket.name]; replaced with line 218
+  const filePathObj = path.parse(`${key}`);
+  const [fileBasename, fileExt] = [filePathObj.name, filePathObj.ext];
+  const jobId = `${Date.now()}`;
 
-    // Overlapping end/start times
-    let keyframeTimes = getKeyframeTimes(probeData)
+  const signedParams = { Bucket: bucket, Key: key, Expires: 900 };
+  var signedInputUrl = s3.getSignedUrl('getObject', signedParams);
 
-    console.log(`keyframeTimes: ${keyframeTimes}`);
+  console.log('Firing up pipeline for ', key, bucket)
+  const probeData = probeVideo(signedInputUrl);
 
-    // Reduces keyframe times into nested array pairs of start and end times. Stylistic choice, at this point
-    // keyframeTimes = keyframeTimes.reduce((segments, cur, idx) => {
-    //   return idx < keyframeTimes.length - 1 ? [...segments, [cur, keyframeTimes[idx + 1]]] : segments;
-    // }, [])
+  // Overlapping end/start times
+  let keyframeTimes = getKeyframeTimes(probeData)
 
-    const simulateInvoke = event.simulateInvoke || keyframeTimes.length >= INVOKE_LIMIT;
+  console.log(`keyframeTimes: ${keyframeTimes}`);
 
-    console.log("Keyframe times: ", keyframeTimes)
-    console.log("inputPath", inputPath)
-    console.log("jobId", jobId)
+  // Reduces keyframe times into nested array pairs of start and end times. Stylistic choice, at this point
+  // keyframeTimes = keyframeTimes.reduce((segments, cur, idx) => {
+  //   return idx < keyframeTimes.length - 1 ? [...segments, [cur, keyframeTimes[idx + 1]]] : segments;
+  // }, [])
 
-    saveJobData({
-      jobId,
-      keyframeTimes,
-      fileBasename,
-      fileExt,
-      simulateInvoke
-    });
+  const simulateInvoke = event.simulateInvoke || keyframeTimes.length >= INVOKE_LIMIT;
 
-    const segmentFilenames = saveSegmentsData({ jobId, keyframeTimes, simulateInvoke });
+  console.log("Keyframe times: ", keyframeTimes)
+  console.log("inputPath", inputPath)
+  console.log("jobId", jobId)
 
-    const manifest = writeToManifest(segmentFilenames, jobId);
+  saveJobData({
+    jobId,
+    keyframeTimes,
+    fileBasename,
+    fileExt,
+    simulateInvoke
+  });
 
-    if (!simulateInvoke) {
-      console.log('Putting manifest in transcoded bucket')
-      await s3
-        .putObject({
-          Bucket: transcodedBucket,
-          Key: `${jobId}/manifest.ffcat`,
-          Body: manifest
-        })
-        .promise();
-    }
+  const segmentFilenames = saveSegmentsData({ jobId, keyframeTimes, simulateInvoke });
 
-    console.log(`${segmentFilenames.length} segments to transcode. ${simulateInvoke ? 'Simulating...' : 'Beginning invocation...'}`)
+  const manifest = writeToManifest(segmentFilenames, jobId);
 
-    for (let idx = 0; idx < segmentFilenames.length; idx += 1) {
-      const payload = {
-        segmentData: {
-          videoKey: videoKey,
-          jobId: jobId,
-          segmentName: segmentFilenames[idx],
-          startTime: keyframeTimes[idx][0],
-          endTime: keyframeTimes[idx][1]
-        }
-      };
-
-      await invokeTranscode(payload, simulateInvoke)
-    }
-
-    unlinkSync(manifestPath)
-    unlinkSync(probeKeyframesPath)
+  if (!simulateInvoke) {
+    console.log('Putting manifest in transcoded bucket')
+    await s3
+      .putObject({
+        Bucket: transcodedBucket,
+        Key: `${jobId}/manifest.ffcat`,
+        Body: manifest
+      })
+      .promise();
   }
+
+  console.log(`${segmentFilenames.length} segments to transcode. ${simulateInvoke ? 'Simulating...' : 'Beginning invocation...'}`)
+
+  for (let idx = 0; idx < segmentFilenames.length; idx += 1) {
+    const payload = {
+      segmentData: {
+        key: key,
+        jobId: jobId,
+        resolution: res,
+        segmentName: segmentFilenames[idx],
+        startTime: keyframeTimes[idx][0],
+        endTime: keyframeTimes[idx][1]
+      }
+    };
+
+    await invokeTranscode(payload, simulateInvoke)
+  }
+
+  unlinkSync(manifestPath)
+  unlinkSync(probeKeyframesPath)
+  // }
 };
