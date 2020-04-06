@@ -1,48 +1,48 @@
 const AWS = require("aws-sdk");
 const lambda = new AWS.Lambda({
-    region: "us-east-1"
+  region: "us-east-1"
 });
-const mergeFunction = process.env.mergeLamdaArn;
+const mergeFunction = process.env.MERGER_LAMBDA_ADDRESS;
 
 exports.mergeInvoke = async (event) => {
-    const eventRecord = event.Records[0];
-    const dbEventType = eventRecord.eventName;
+  const eventRecord = event.Records[0];
+  const dbEventType = eventRecord.eventName;
 
-    if (dbEventType !== "MODIFY") {
-        console.log(`\nFrom 'mergeInvoke'(func):[NOT A MODIFY] -DBEntryType: ${dbEventType}\nnot a modification of an entry in the Jobs table.`);
-        return;
-    }
+  if (dbEventType !== "MODIFY") {
+    console.log(`\nFrom 'mergeInvoke'(func):[NOT A MODIFY] -DBEntryType: ${dbEventType}\nnot a modification of an entry in the Jobs table.`);
+    return;
+  }
 
-    const entryInfo = eventRecord.dynamodb.NewImage;
+  const entryInfo = eventRecord.dynamodb.NewImage;
 
-    if (entryInfo.status.S !== "pending") {
-        console.log(`\nFrom 'mergeInvoke'(func):[NO INVOCATION REQUEST] \njobs table was updated, not in such a way so as to invoke the merge function.`);
-        return;
-    }
+  if (entryInfo.status.S !== "pending") {
+    console.log(`\nFrom 'mergeInvoke'(func):[NO INVOCATION REQUEST] \njobs table was updated, not in such a way so as to invoke the merge function.`);
+    return;
+  }
 
-    const jobID = entryInfo.id.S;
-    const finishedTasks = entryInfo.finishedTasks.N;
-    const totalTasks = entryInfo.totalTasks.N;
+  const jobID = entryInfo.id.S;
+  const finishedTasks = entryInfo.finishedTasks.N;
+  const totalTasks = entryInfo.totalTasks.N;
 
-    const mergeParams = {
-        FunctionName: mergeFunction,
-        InvocationType: "Event",
-        Payload: JSON.stringify({ jobId: jobID }),
-        LogType: 'None',
-        ClientContext: 'MergeInvokerFunction',
-    };
+  const mergeParams = {
+    FunctionName: mergeFunction,
+    InvocationType: "Event",
+    Payload: JSON.stringify({ jobId: jobID }),
+    LogType: 'None',
+    ClientContext: 'MergeInvokerFunction',
+  };
 
-    if (finishedTasks === totalTasks) {
-        console.log(`\nFrom 'mergeInvoke'(func):[EQUAL TASKS] \n'merge'(func) should be invoked on this condition`);
+  if (finishedTasks === totalTasks) {
+    console.log(`\nFrom 'mergeInvoke'(func):[EQUAL TASKS] \n'merge'(func) should be invoked on this condition`);
 
-        console.log('Attempting merge invoke...')
+    console.log('Attempting merge invoke...')
 
-        await lambda.invoke(mergeParams, (err, data) => {
-            if (err) {
-                console.error(JSON.stringify(err));
-            } else {
-                console.log(data);
-            }
-        }).promise()
-    }
+    await lambda.invoke(mergeParams, (err, data) => {
+      if (err) {
+        console.error(JSON.stringify(err));
+      } else {
+        console.log(data);
+      }
+    }).promise()
+  }
 };
