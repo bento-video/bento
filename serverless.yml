@@ -1,0 +1,173 @@
+service: bento
+
+plugins: 
+  - serverless-pseudo-parameters
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: dev
+  region: us-east-2
+  timeout: 900
+  versionFunctions: false
+  environment:
+    #S3
+    NEW_VIDEO_BUCKET: ${self:custom.video-upload-bucket}
+    TRANSCODED_SEGMENTS_BUCKET: ${self:custom.transcoded-segments-bucket}
+    FINAL_VIDEO_BUCKET: ${self:custom.processed-videos-bucket}
+    #DDB
+    JOBS_TABLE: ${self:custom.jobs-table}
+    SEGMENTS_TABLE: ${self:custom.segments-table}
+    #AWS cli layer
+    LD_LIBRARY_PATH:	"/opt/awscli/lib"
+    PYTHONHOME:	"/opt/awscli/lib/python2.7"
+    PYTHONPATH:	"/opt/awscli/lib/python2.7:/opt/awscli/lib/python2.7/lib-dynload"
+    
+  # deploymentBucket:
+  #   name: 
+    
+  iamManagedPolicies: 
+    - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+    - "arn:aws:iam::aws:policy/AWSLambdaFullAccess"
+    - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+    
+custom:
+  #S3
+  video-upload-bucket:
+    Ref: videoUploadBucket
+  transcoded-segments-bucket: 
+    Ref: transcodedSegmentsBucket
+  processed-videos-bucket: 
+    Ref: processedVideosBucket
+  #DDB
+  jobs-table: Jobs
+  segments-table: Segments
+     
+functions:
+  executer:
+    handler: bentoExecutor/function/executor.execute
+    name: executor       
+    # provisionedConcurrency:
+    # reserverdConcurrency:
+    # timeout: 
+    environment:
+      TRANSCODER_LAMBDA_ADDRESS: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:transcoder
+    layers:
+      - {Ref: FfmpegLambdaLayer} 
+    
+  transcoder:
+    handler: bentoTranscoder/function/transcoder.transcode
+    name: transcoder
+    memorySize: 3008
+    # provisionedConcurrency:
+    # reserverdConcurrency:
+    # timeout: 
+    layers:
+      - {Ref: FfmpegLambdaLayer}    
+
+  mergeInvoker:
+    handler: bentoMergeInvoker/function/mergeInvoker.mergeInvoke
+    name: mergeInvoker
+    memorySize: 128
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt:
+              - jobsTable
+              - StreamArn
+          batchSize: 1
+    environment:
+      MERGER_LAMBDA_ADDRESS: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:merger
+    # provisionedConcurrency:
+    # reserverdConcurrency:
+    # timeout: 
+
+  merger:
+    handler: bentoMerger/function/merger.merge
+    name: merger
+    # provisionedConcurrency:
+    # reserverdConcurrency:
+    # timeout: 
+    layers:
+      - {Ref: FfmpegLambdaLayer}     
+    
+layers:
+  ffmpeg:
+    path: layer/ffmpeg_layer
+  # awscli:
+  #   path: layer/awscli_layer  
+
+resources:
+  Resources:
+    #DDB
+    jobsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.jobs-table}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 10
+          WriteCapacityUnits: 10
+        StreamSpecification:
+          StreamViewType: NEW_IMAGE
+    segmentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.segments-table}
+        AttributeDefinitions:
+          - AttributeName: jobId
+            AttributeType: S
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: jobId
+            KeyType: HASH
+          - AttributeName: id
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 10
+          WriteCapacityUnits: 10
+    #S3
+    videoUploadBucket:
+      Type: AWS::S3::Bucket
+      Properties: 
+        CorsConfiguration:
+          CorsRules:
+            - AllowedMethods:
+                - POST
+                - DELETE
+              AllowedOrigins:
+                - "*"
+              AllowedHeaders:
+                - "*"
+    transcodedSegmentsBucket:
+      Type: AWS::S3::Bucket
+
+    processedVideosBucket:
+      Type: AWS::S3::Bucket
+      Properties: 
+        CorsConfiguration:
+          CorsRules:
+            - AllowedMethods:
+                - GET
+                - DELETE
+              AllowedOrigins:
+                - "*"
+              AllowedHeaders:
+                - "*"
+  # Outputs:
+  #   videoUploadBucketName:
+  #     Value:
+  #       Ref: videoUploadBucket
+  #   transcodedSegmentsBucket:
+  #     Value:
+  #       Ref: transcodedSegmentsBucket
+  #   processedVideosBucket:
+  #     Value:
+  #       Ref: processedVideosBucket
