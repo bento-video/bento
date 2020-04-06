@@ -3,9 +3,9 @@ const { readFileSync, writeFileSync, unlinkSync } = require("fs");
 const AWS = require("aws-sdk");
 const s3 = new AWS.S3();
 const docClient = new AWS.DynamoDB.DocumentClient();
-const transcodedChunksBucket = process.env.TRANSCODED_CHUNKS_BUCKET;
-const endBucket = process.env.END_BUCKET;
-const jobsTable = "Jobs";
+const transcodedChunksBucket = process.env.TRANSCODED_SEGMENTS_BUCKET;
+const endBucket = process.FINAL_VIDEO_BUCKET;
+const jobsTable = process.env.JOBS_TABLE;
 const manifestPath = `/tmp/manifest.ffcat`;
 
 // const { PassThrough } = require('stream');
@@ -250,7 +250,7 @@ const concatHttpToS3 = async (jobData) => {
   return true;
 }
 
-module.exports.simpleMerge = async (event) => {
+module.exports.merge = async (event) => {
   const simulateInvoke = event.simulateInvoke;
   const jobId = event.jobId;
   let jobData = await getJobData(jobId);
