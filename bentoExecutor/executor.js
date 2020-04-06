@@ -277,6 +277,7 @@ module.exports.execute = async (event) => {
       segmentData: {
         key: key,
         jobId: jobId,
+        resolution: res,
         segmentName: segmentFilenames[idx],
         startTime: keyframeTimes[idx][0],
         endTime: keyframeTimes[idx][1]
