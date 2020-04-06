@@ -2,13 +2,13 @@
 const { spawnSync } = require("child_process");
 const { readFileSync, unlinkSync } = require("fs");
 const AWS = require("aws-sdk");
-const outputBucketName = process.env.TRANSCODED_VIDEO_BUCKET;
-const startBucketName = process.env.START_VIDEO_BUCKET;
+const outputBucketName = process.env.TRANSCODED_SEGMENTS_BUCKET;
+const startBucketName = process.env.NEW_VIDEO_BUCKET;
 const s3 = new AWS.S3();
 const DDB = new AWS.DynamoDB.DocumentClient();
 
-const jobsTable = "Jobs";
-const tasksTable = "Segments";
+const jobsTable = process.env.JOBS_TABLE;
+const tasksTable = process.env.SEGMENTS_TABLE;
 
 const transcodeVideo = async (segmentData) => {
   console.log('In transcodeVideo fx: ', segmentData);
@@ -120,7 +120,7 @@ const recordTransaction = async (segmentData) => {
   endTime: '96.000000'
 }
 */
-module.exports.transcodeVideo = async (event) => {
+module.exports.transcode = async (event) => {
   const simulateInvoke = event.simulateInvoke;
   if (!event.segmentData) {
     console.log("not an bento-exec invocation!");
