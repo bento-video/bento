@@ -7,7 +7,7 @@ provider:
   name: aws
   runtime: nodejs12.x
   stage: dev
-  region: us-east-2
+  region: us-east-1
   timeout: 900
   versionFunctions: false
   environment:
@@ -53,7 +53,8 @@ functions:
     environment:
       TRANSCODER_LAMBDA_ADDRESS: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:transcoder
     layers:
-      - {Ref: FfmpegLambdaLayer} 
+      - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
+      # - {Ref: FfmpegLambdaLayer}     
     
   transcoder:
     handler: bentoTranscoder/function/transcoder.transcode
@@ -63,7 +64,8 @@ functions:
     # reserverdConcurrency:
     # timeout: 
     layers:
-      - {Ref: FfmpegLambdaLayer}    
+      - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
+      # - {Ref: FfmpegLambdaLayer}     
 
   mergeInvoker:
     handler: bentoMergeInvoker/function/mergeInvoker.mergeInvoke
@@ -90,11 +92,12 @@ functions:
     # reserverdConcurrency:
     # timeout: 
     layers:
-      - {Ref: FfmpegLambdaLayer}     
+      - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
+      # - {Ref: FfmpegLambdaLayer}     
     
-layers:
-  ffmpeg:
-    path: layer/ffmpeg_layer
+# layers:
+#   ffmpeg:
+#     path: layers/ffmpeg_layer
   # awscli:
   #   path: layer/awscli_layer  
 
