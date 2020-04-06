@@ -37,12 +37,14 @@ exports.mergeInvoke = async (event) => {
 
     console.log('Attempting merge invoke...')
 
-    await lambda.invoke(mergeParams, (err, data) => {
-      if (err) {
-        console.error(JSON.stringify(err));
-      } else {
-        console.log(data);
-      }
-    }).promise()
+    await lambda.invoke(mergeParams).promise()
+      .then(data => {
+        console.log("MSSG: Merge invoked successfully");
+        console.log("Payload: ", data);
+      })
+      .catch(error => {
+        console.log("MSSG: Encountered error when trying to invoke merge");
+        console.log(error);
+      });
   }
 };
