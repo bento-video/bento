@@ -244,7 +244,7 @@ module.exports.execute = async (event) => {
   const simulateInvoke = event.simulateInvoke || keyframeTimes.length >= INVOKE_LIMIT;
 
   console.log("Keyframe times: ", keyframeTimes)
-  console.log("inputPath", inputPath)
+  // console.log("inputPath", inputPath)
   console.log("jobId", jobId)
 
   saveJobData({
