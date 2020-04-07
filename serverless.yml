@@ -44,7 +44,7 @@ custom:
   segments-table: Segments
      
 functions:
-  executer:
+  executor:
     handler: bentoExecutor/function/executor.execute
     name: executor       
     # provisionedConcurrency:
