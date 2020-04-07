@@ -226,7 +226,7 @@ module.exports.execute = async (event) => {
   const jobId = `${Date.now()}`;
 
   const signedParams = { Bucket: bucket, Key: key, Expires: 900 };
-  var signedInputUrl = s3.getSignedUrl('getObject', signedParams);
+  const signedInputUrl = s3.getSignedUrl('getObject', signedParams);
 
   console.log('Firing up pipeline for ', key, bucket)
   const probeData = probeVideo(signedInputUrl);
