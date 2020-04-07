@@ -23,8 +23,8 @@ provider:
     PYTHONHOME:	"/opt/awscli/lib/python2.7"
     PYTHONPATH:	"/opt/awscli/lib/python2.7:/opt/awscli/lib/python2.7/lib-dynload"
     
-  # deploymentBucket:
-  #   name: 
+  deploymentBucket:
+    name: bento-dev-serverlessdeploymentbucket-12gci3jitxehg
     
   iamManagedPolicies: 
     - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
@@ -45,7 +45,7 @@ custom:
      
 functions:
   executor:
-    handler: bentoExecutor/function/executor.execute
+    handler: bentoExecutor/executor.execute
     name: executor       
     # provisionedConcurrency:
     # reserverdConcurrency:
@@ -57,7 +57,7 @@ functions:
       # - {Ref: FfmpegLambdaLayer}     
     
   transcoder:
-    handler: bentoTranscoder/function/transcoder.transcode
+    handler: bentoTranscoder/transcoder.transcode
     name: transcoder
     memorySize: 3008
     # provisionedConcurrency:
@@ -68,7 +68,7 @@ functions:
       # - {Ref: FfmpegLambdaLayer}     
 
   mergeInvoker:
-    handler: bentoMergeInvoker/function/mergeInvoker.mergeInvoke
+    handler: bentoMergeInvoker/mergeInvoker.mergeInvoke
     name: mergeInvoker
     memorySize: 128
     events:
@@ -86,7 +86,7 @@ functions:
     # timeout: 
 
   merger:
-    handler: bentoMerger/function/merger.merge
+    handler: bentoMerger/merger.merge
     name: merger
     # provisionedConcurrency:
     # reserverdConcurrency:
