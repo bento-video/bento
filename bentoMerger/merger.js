@@ -4,8 +4,9 @@ const AWS = require("aws-sdk");
 const s3 = new AWS.S3();
 const docClient = new AWS.DynamoDB.DocumentClient();
 const transcodedChunksBucket = process.env.TRANSCODED_SEGMENTS_BUCKET;
-const endBucket = process.FINAL_VIDEO_BUCKET;
+const endBucket = process.env.FINAL_VIDEO_BUCKET;
 const jobsTable = process.env.JOBS_TABLE;
+const segmentsTable = process.env.SEGMENTS_TABLE;
 const manifestPath = `/tmp/manifest.ffcat`;
 
 // const { PassThrough } = require('stream');
@@ -230,9 +231,18 @@ const recordJobCompleted = async ({ id: jobId, createdAt }) => {
 
 const concatHttpToS3 = async (jobData) => {
   const { id: jobId, filename, outputType } = jobData;
-  const manifestPath = `https://bento-transcoded-segments.s3.amazonaws.com/${jobId}/manifest.ffcat`;
   const videoKey = `${jobId}-${filename}${outputType}`;
-  const s3Path = `s3://bento-video-end/${videoKey}`;
+  const s3Path = `s3://${endBucket}/${videoKey}`;
+
+  // const signedParams = { 
+  //   Bucket: transcodedChunksBucket,
+  //   Key: `${jobId}/manifest.ffcat`,
+  //   Expires: 900
+  // };
+
+  // const signedManifestUrl = s3.getSignedUrl('getObject', signedParams);
+  // const manifestContent = readFileSync(manifestPath);
+  // console.log(manifestContent);
 
   console.log(`Attempting http concat with output to ${s3Path}`)
 
@@ -250,7 +260,64 @@ const concatHttpToS3 = async (jobData) => {
   return true;
 }
 
+const getSegmentFilenames = async jobId => {
+  const dbQueryParams = {
+    TableName: segmentsTable,
+    KeyConditionExpression: "jobId = :j",
+    ExpressionAttributeValues: {
+      ":j": jobId
+    }
+  }
+
+  const filenames = [];
+
+  await docClient.query(dbQueryParams, function (err, data) {
+    if (err) {
+      console.error("Unable to query. Error:", JSON.stringify(err, null, 2));
+    } else {
+      console.log("Query succeeded.");
+      data.Items.forEach(function (item) {
+        filenames.push(item.filename);
+      });
+    }
+  }).promise();
+
+  return filenames;
+}
+
+
+const writeToManifest = async (jobId) => {
+  const filenames = await getSegmentFilenames(jobId);
+  let manifest = '';
+  let key;
+  let signedParams;
+  let signedInputUrl;
+
+
+  filenames.forEach((filename) => {
+    console.log('segment file name', filename);
+    console.log('segment key', `${jobId}/${filename}`);
+
+    key = `${jobId}/${filename}.mp4`;
+    signedParams = {
+      Bucket: transcodedChunksBucket,
+      Key: key,
+      Expires: 900
+    };
+    signedInputUrl = s3.getSignedUrl('getObject', signedParams);
+
+    manifest += `file ${signedInputUrl}\n`;
+  });
+
+  console.log('writing manifest: ', manifest);
+  writeFileSync(manifestPath, manifest, err => {
+    console.log(`${err ? err : 'successfully wrote to manifest'}`);
+  })
+}
+
 module.exports.merge = async (event) => {
+  console.log('event data', event);
+
   const simulateInvoke = event.simulateInvoke;
   const jobId = event.jobId;
   let jobData = await getJobData(jobId);
@@ -264,6 +331,19 @@ module.exports.merge = async (event) => {
     audioPath: `/tmp/${filename}-Audio${audioType}`,
     completedPath: `/tmp/${filename}-Completed${outputType}`
   }
+
+  console.log('jobId:', jobId);
+
+  await writeToManifest(jobId);
+
+  // console.log('Putting manifest in transcoded bucket')
+  // await s3
+  //   .putObject({
+  //     Bucket: transcodedChunksBucket,
+  //     Key: `${jobId}/manifest.ffcat`,
+  //     Body: manifest
+  //   })
+  //   .promise();
 
   concatHttpToS3(jobData);
   if (simulateInvoke) {
@@ -292,4 +372,6 @@ module.exports.merge = async (event) => {
    await putCompletedVideoInBucket(jobData, videoPaths.completedPath)
    */
   await recordJobCompleted(jobData);
+
+  unlinkSync(manifestPath)
 };
