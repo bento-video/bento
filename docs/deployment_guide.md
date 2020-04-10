@@ -17,7 +17,7 @@
 `npm install serverless-pseudo-parameters`
 
 ## 3. Create ffmpeg Lambda layer
-create a new folder to store the layer, within this new folder:
+create a new folder (anywhere on your file system that isn't within a git repository), within that folder:
 
 `git clone https://github.com/bento-video/ffmpeg-lambda-layer.git`
 
@@ -41,7 +41,7 @@ create a new folder to store the layer, within this new folder:
 
 ## 4. Create [AWS CLI Lambda layer](https://github.com/aws-samples/aws-lambda-layer-awscli/tree/node12-runtime-support)
 ### Clone Node 12 runtime branch 
-create a new folder to store the layer, within this new folder:
+create a new folder (anywhere on your file system that isn't within a git repository), within this new folder:
 
 `git clone -b node12-runtime-support https://github.com/aws-samples/aws-lambda-layer-awscli.git`
 
@@ -63,10 +63,12 @@ make the following change in the *makefile* (found within the `aws-lambda-layer-
 ### Build and upload the awscli layer
 `make layer-build-python27 layer-zip layer-upload layer-publish`
 
-## 5. Clone and deploy[Bento](https://github.com/bento-video/bento.git) repo
+## 5. Clone and deploy[Bento] (https://github.com/bento-video/bento.git) repo
 create a new folder to store the Bento app, within this new folder:
 
 `git clone https://github.com/bento-video/bento.git`
+
+`cd bento`
 
 `sls deploy`
 
@@ -82,6 +84,7 @@ create a new folder to store the Bento app, within this new folder:
 - select `Add a layer` below
 - select `Provide a layer version ARN`
 - enter the `Layer version ARN`
+
 
 
 
