@@ -23,9 +23,6 @@ provider:
     PYTHONHOME:	"/opt/awscli/lib/python2.7"
     PYTHONPATH:	"/opt/awscli/lib/python2.7:/opt/awscli/lib/python2.7/lib-dynload"
     
-  deploymentBucket:
-    name: bento-dev-serverlessdeploymentbucket-12gci3jitxehg
-    
   iamManagedPolicies: 
     - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
     - "arn:aws:iam::aws:policy/AWSLambdaFullAccess"
