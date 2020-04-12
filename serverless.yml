@@ -18,6 +18,7 @@ provider:
     #DDB
     JOBS_TABLE: ${self:custom.jobs-table}
     SEGMENTS_TABLE: ${self:custom.segments-table}
+    VIDEOS_TABLE: ${self:custom.videos-table}
     #AWS cli layer
     LD_LIBRARY_PATH:	"/opt/awscli/lib"
     PYTHONHOME:	"/opt/awscli/lib/python2.7"
@@ -39,6 +40,7 @@ custom:
   #DDB
   jobs-table: Jobs
   segments-table: Segments
+  videos-table: Videos
      
 functions:
   executor:
@@ -101,13 +103,26 @@ functions:
 resources:
   Resources:
     #DDB
+    videosTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.videos-table}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 10
+          WriteCapacityUnits: 10
     jobsTable:
       Type: AWS::DynamoDB::Table
       Properties:
         TableName: ${self:custom.jobs-table}
         AttributeDefinitions:
           - AttributeName: id
-            AttributeType: S
+            AttributeType: N
         KeySchema:
           - AttributeName: id
             KeyType: HASH
@@ -122,7 +137,7 @@ resources:
         TableName: ${self:custom.segments-table}
         AttributeDefinitions:
           - AttributeName: jobId
-            AttributeType: S
+            AttributeType: N
           - AttributeName: id
             AttributeType: S
         KeySchema:
