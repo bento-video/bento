@@ -7,6 +7,8 @@ const transcodedChunksBucket = process.env.TRANSCODED_SEGMENTS_BUCKET;
 const endBucket = process.env.FINAL_VIDEO_BUCKET;
 const jobsTable = process.env.JOBS_TABLE;
 const segmentsTable = process.env.SEGMENTS_TABLE;
+const videosTable = process.env.VIDEOS_TABLE;
+
 const manifestPath = `/tmp/manifest.ffcat`;
 
 // const { PassThrough } = require('stream');
@@ -285,6 +287,29 @@ const getSegmentFilenames = async jobId => {
   return filenames;
 }
 
+const getVideoId = async jobId => {
+  const dbQueryParams = {
+    TableName: jobsTable,
+    KeyConditionExpression: "jobId = :j",
+    ExpressionAttributeValues: {
+      ":j": jobId
+    }
+  }
+
+  const videoId;
+
+  await docClient.query(dbQueryParams, function (err, data) {
+    if (err) {
+      console.error("Unable to query. Error:", JSON.stringify(err, null, 2));
+    } else {
+      console.log("Query succeeded.");
+      videoId = data.Items[0].videoId
+    }
+  }).promise();
+
+  return videoId;
+}
+
 
 const writeToManifest = async (jobId) => {
   const filenames = await getSegmentFilenames(jobId);
@@ -313,6 +338,36 @@ const writeToManifest = async (jobId) => {
   writeFileSync(manifestPath, manifest, err => {
     console.log(`${err ? err : 'successfully wrote to manifest'}`);
   })
+}
+
+
+
+const incrementVersionCount = jobId => {
+  const videoId = await getVideoId(jobId);
+
+  const updateParams = {
+    Key: {
+      "id": videoId
+    },
+    TableName: videosTable,
+    UpdateExpression: 'SET versions = versions + :val',
+    ExpressionAttributeValues: {
+      ':val': 1
+    },
+    ReturnValues: "UPDATED_NEW"
+  };
+
+  console.log(`Attempting to increment version counter for video ${videoId}`);
+
+  await docClient.update(updateParams).promise()
+    .then(data => {
+      console.log("UpdateItem succeeded:", JSON.stringify(data, null, 2));
+      return data;
+    })
+    .catch(err => {
+      console.error("Unable to update item. Error JSON:", JSON.stringify(err, null, 2))
+      return null;
+    });
 }
 
 module.exports.merge = async (event) => {
@@ -372,6 +427,8 @@ module.exports.merge = async (event) => {
    await putCompletedVideoInBucket(jobData, videoPaths.completedPath)
    */
   await recordJobCompleted(jobData);
+
+  await incrementVersionCount(jobId);
 
   unlinkSync(manifestPath)
 };
