@@ -296,7 +296,7 @@ const getVideoId = async jobId => {
     }
   }
 
-  const videoId;
+  let videoId;
 
   await docClient.query(dbQueryParams, function (err, data) {
     if (err) {
