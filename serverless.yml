@@ -29,6 +29,9 @@ provider:
     - "arn:aws:iam::aws:policy/AWSLambdaFullAccess"
     - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
     
+  # deploymentBucket:
+  #   name: "bento-dev-serverlessdeploymentbucket-12gci3jitxehg"
+
 custom:
   #S3
   video-upload-bucket:
@@ -38,11 +41,21 @@ custom:
   processed-videos-bucket: 
     Ref: processedVideosBucket
   #DDB
-  jobs-table: Jobs
-  segments-table: Segments
-  videos-table: Videos
+  jobs-table: BentoJobs
+  segments-table: BentoSegments
+  videos-table: BentoVideos
      
 functions:
+  recordUpload:
+    handler: bentoRecordUpload/recordUpload.recordUpload
+    name: recordUploader       
+    # provisionedConcurrency:
+    # reserverdConcurrency:
+    # timeout: 
+    layers:
+      - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
+      # - {Ref: FfmpegLambdaLayer}     
+
   executor:
     handler: bentoExecutor/executor.execute
     name: executor       
