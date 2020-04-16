@@ -1,4 +1,4 @@
-# Deployment Guide
+# AWS Infrastructure Deployment Guide
 
 ## Prerequisites
 - [Node](https://nodejs.org/en/) 6 or higher
