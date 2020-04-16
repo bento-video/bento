@@ -91,3 +91,20 @@ connect to your EC2 instance within terminal
 
 `docker run --rm -d -v ${PWD}:/app -v /app/node_modules -v app/package.json -p 3001:3001 yourhubusername/bentobackend`
 
+## 7. Modify EC2 Security Group settings
+within AWS console modify the inbound rules for your EC2 instance
+
+1. add a rule for React
+
+Type: Custom TCP
+Protocol: TCP
+Port range: 4000
+Source: My IP (or any that you choose)
+
+2. add a rule for Expresss
+
+Type: Custom TCP
+Protocol: TCP
+Port range: 3001
+Source: My IP (or any that you choose)
+
