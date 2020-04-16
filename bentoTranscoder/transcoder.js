@@ -2,13 +2,13 @@
 const { spawnSync } = require("child_process");
 const { readFileSync, unlinkSync } = require("fs");
 const AWS = require("aws-sdk");
-const outputBucketName = process.env.TRANSCODED_SEGMENTS_BUCKET;
-const startBucketName = process.env.NEW_VIDEO_BUCKET;
+const outputBucketName = process.env.TRANSCODED_VIDEO_BUCKET;
+const startBucketName = process.env.START_VIDEO_BUCKET;
 const s3 = new AWS.S3();
 const DDB = new AWS.DynamoDB.DocumentClient();
 
 const jobsTable = process.env.JOBS_TABLE;
-const tasksTable = process.env.SEGMENTS_TABLE;
+const segmentsTable = process.env.SEGMENTS_TABLE;
 
 const transcodeVideo = async (segmentData) => {
   console.log("In transcodeVideo fx: ", segmentData);
@@ -41,23 +41,13 @@ const transcodeVideo = async (segmentData) => {
     outputPath,
   ];
 
-  if (segmentData.resolution !== "null") {
-    const [h, w] = segmentData.resolution.split(":");
+  if (segmentData.resolution) {
+    const [w, h] = segmentData.resolution.split("x");
     command.splice(10, 0, "-vf", `scale=w=${w}:h=${h}`);
     console.log("Added Resolution commands");
   }
 
-  spawnSync(
-    "/opt/ffmpeg/ffmpeg",
-    command,
-    // [
-    //   "-ss", segmentData.startTime,
-    //   "-to", segmentData.endTime,
-    //   "-i", inputPath,
-    //   "-c:v", "libx264", "-c:a", "copy", outputPath
-    // ],
-    { stdio: "inherit" }
-  );
+  spawnSync("/opt/ffmpeg/ffmpeg", command, { stdio: "inherit" });
   // read file from disk
   console.log(`Trying to read file at: ${outputPath}`);
   const transcodedVideo = readFileSync(outputPath);
@@ -78,6 +68,64 @@ const transcodeVideo = async (segmentData) => {
     .promise();
 };
 
+const quickTranscode = async (segmentData) => {
+  console.log("Attempting quick transcode with: ", segmentData);
+
+  const segmentLength =
+    Number(segmentData.endTime) - Number(segmentData.startTime);
+  const frameRate = segmentData.frameRate || 25;
+  const inputPath = `https://s3.amazonaws.com/${startBucketName}/${segmentData.key}`;
+  const outputPath = `/tmp/${segmentData.segmentName}-transcoded.mp4`;
+
+  console.log(
+    `Spawning ffmpeg transcoding, inputPath is: ${inputPath}  outputPath is: ${outputPath}`
+  );
+
+  spawnSync(
+    "/opt/ffmpeg/ffmpeg",
+    [
+      "-ss",
+      segmentData.startTime,
+      "-t",
+      "6",
+      "-i",
+      inputPath,
+      "-c:v",
+      "libx264",
+      "-c:a",
+      "copy",
+      // "-copyts",
+      "-avoid_negative_ts",
+      "1",
+      // "-g", String(6 * frameRate),
+      // "-sc_threshold", "0",
+      // "-force_key_frames", "expr:gte(t,n_forced*6)",
+      "-fflags",
+      "+genpts",
+      outputPath,
+    ],
+    { stdio: "ignore" }
+  );
+  // read file from disk
+  console.log(`Trying to read file at: ${outputPath}`);
+  const transcodedVideo = readFileSync(outputPath);
+
+  // delete local files
+  console.log(`Trying to delete ${outputPath}`);
+  unlinkSync(outputPath);
+
+  // console.log(`Trying to delete ${inputPath}`)
+  // unlinkSync(inputPath);
+
+  await s3
+    .putObject({
+      Bucket: outputBucketName,
+      Key: `${segmentData.jobId}/${segmentData.segmentName}.mp4`,
+      Body: transcodedVideo,
+    })
+    .promise();
+};
+
 const recordTransaction = async (segmentData) => {
   console.log("In recordTransaction fx: ", segmentData);
 
@@ -87,7 +135,7 @@ const recordTransaction = async (segmentData) => {
       jobId: segmentData.jobId,
       id: segmentData.segmentId,
     },
-    TableName: tasksTable,
+    TableName: segmentsTable,
     UpdateExpression: "SET #s = :new_status",
     ConditionExpression: "#s = :pending",
     ExpressionAttributeNames: {
@@ -150,15 +198,16 @@ const recordTransaction = async (segmentData) => {
 
 /*
 {
-  videoKey: 'humility_original.mp4',
+  key: 'humility_original.mp4',
   jobId: '1584375307747',
   segmentName: '1584375307747-039',
-  startTime: '92.640000',
-  endTime: '96.000000'
+  startTime: '92',
+  endTime: '98.000000'
 }
 */
-module.exports.transcode = async (event) => {
-  const simulateInvoke = event.simulateInvoke;
+module.exports.transcodeVideo = async (event) => {
+  const { simulateInvoke, tryQuick } = event;
+
   if (!event.segmentData) {
     console.log("not an bento-exec invocation!");
     return;
@@ -175,7 +224,7 @@ module.exports.transcode = async (event) => {
   } else {
     // create params for DDB queries
     const getSubTaskParams = {
-      TableName: tasksTable,
+      TableName: segmentsTable,
       Key: {
         jobId: segmentData.jobId,
         id: segmentData.segmentId,
@@ -207,12 +256,15 @@ module.exports.transcode = async (event) => {
     }
   }
 
+  if (tryQuick) {
+    await quickTranscode(segmentData);
+  } else {
+    await transcodeVideo(segmentData);
+  }
+
   if (simulateInvoke) {
     console.log("Transcode simulation complete! Exiting..");
     return;
   }
-
-  await transcodeVideo(segmentData);
-
   await recordTransaction(segmentData);
 };
