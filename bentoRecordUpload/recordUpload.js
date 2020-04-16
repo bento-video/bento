@@ -1,16 +1,16 @@
-'use strict';
+"use strict";
 const AWS = require("aws-sdk");
 const s3 = new AWS.S3();
 const DDB = new AWS.DynamoDB.DocumentClient();
-const bucket = process.env.NEW_VIDEO_BUCKET;          // notify Mike of this ENV variable. Should be set up already.
+const bucket = "bento-video-start"; //process.env.NEW_VIDEO_BUCKET; notify Mike of this ENV variable. Should be set up already.
 const { readFileSync, unlinkSync } = require("fs");
 const { execSync } = require("child_process");
-const { extname } = require('path');
+const { extname } = require("path");
 
 const probeVideoDataPath = "/tmp/probeVideoData.json";
-const videosTable = process.env.VIDEOS_TABLE;         // notify Mike of this ENV var. Should be set up already. Needs to be BentoVideos rather than Videos
+const videosTable = "BentoVideos"; //process.env.VIDEOS_TABLE; notify Mike of this ENV var. Should be set up already. Needs to be BentoVideos rather than Videos
 
-const probeVideo = objectUrl => {
+const probeVideo = (objectUrl) => {
   const command = `/opt/ffmpeg/ffprobe -v error -show_entries stream=width,height -show_entries format=size,duration -print_format json -i "${objectUrl}" > "${probeVideoDataPath}"`;
 
   execSync(command, (error, stdout, stderr) => {
@@ -24,7 +24,7 @@ const probeVideo = objectUrl => {
   return JSON.parse(probeData);
 };
 
-module.exports.recordUpload = async (event) => {
+module.exports.recordUpload = async (event, context, callback) => {
   const id = event.id;
   const filename = event.filename;
   const format = extname(filename);
@@ -32,7 +32,7 @@ module.exports.recordUpload = async (event) => {
   global.gc();
 
   const urlParams = { Bucket: bucket, Key: filename, Expires: 900 };
-  const signedUrl = s3.getSignedUrl('getObject', urlParams);
+  const signedUrl = s3.getSignedUrl("getObject", urlParams);
   const probeData = probeVideo(signedUrl);
 
   const { width, height } = probeData.streams[0];
@@ -41,19 +41,31 @@ module.exports.recordUpload = async (event) => {
 
   const videoDbParams = {
     TableName: videosTable,
-    Item: { id, filename, format, resolution, duration, size, versions: 0 }
+    Item: {
+      id,
+      filename,
+      format,
+      resolution,
+      duration: Number(duration),
+      size: Number(size),
+      versions: 0,
+    },
   };
 
-  const dbEntry = await DDB.put(videoDbParams).promise()
-    .then(data => {
+  const dbEntry = await DDB.put(videoDbParams)
+    .promise()
+    .then((data) => {
       console.log("Added video");
       return videoDbParams;
     })
-    .catch(err => {
-      console.log(`Unable to add video. Error JSON:`, JSON.stringify(err, null, 2));
+    .catch((err) => {
+      console.log(
+        `Unable to add video. Error JSON:`,
+        JSON.stringify(err, null, 2)
+      );
     });
 
   console.log("DB ENTRY: ", dbEntry);
   unlinkSync(probeVideoDataPath);
-  return dbEntry.Item;
+  callback(null, dbEntry.Item);
 };
