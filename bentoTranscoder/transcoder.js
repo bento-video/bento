@@ -2,8 +2,8 @@
 const { spawnSync } = require("child_process");
 const { readFileSync, unlinkSync } = require("fs");
 const AWS = require("aws-sdk");
-const outputBucketName = process.env.TRANSCODED_VIDEO_BUCKET;
-const startBucketName = process.env.START_VIDEO_BUCKET;
+const outputBucketName = process.env.TRANSCODED_SEGMENTS_BUCKET;
+const startBucketName = process.env.NEW_VIDEO_BUCKET;
 const s3 = new AWS.S3();
 const DDB = new AWS.DynamoDB.DocumentClient();
 

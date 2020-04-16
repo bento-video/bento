@@ -8,8 +8,8 @@ const DDB = new AWS.DynamoDB.DocumentClient();
 const lambda = new AWS.Lambda({
   region: "us-east-1",
 });
-const transcodedBucket = process.env.TRANSCODED_VIDEO_BUCKET;
-const startBucket = process.env.START_VIDEO_BUCKET;
+const transcodedBucket = process.env.TRANSCODED_SEGMENTS_BUCKET;
+const startBucket = process.env.NEW_VIDEO_BUCKET;
 const transcodeLambdaAddress = process.env.TRANSCODE_LAMBDA_ADDRESS;
 const jobsTable = process.env.JOBS_TABLE;
 const segmentsTable = process.env.SEGMENTS_TABLE;

@@ -2,7 +2,7 @@
 const AWS = require("aws-sdk");
 const s3 = new AWS.S3();
 const DDB = new AWS.DynamoDB.DocumentClient();
-const bucket = "bento-video-start"; //process.env.NEW_VIDEO_BUCKET; notify Mike of this ENV variable. Should be set up already.
+const bucket = process.env.NEW_VIDEO_BUCKET;
 const { readFileSync, unlinkSync } = require("fs");
 const { execSync } = require("child_process");
 const { extname } = require("path");

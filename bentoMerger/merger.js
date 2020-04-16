@@ -1,7 +1,8 @@
 const { execSync } = require("child_process");
 const AWS = require("aws-sdk");
 const docClient = new AWS.DynamoDB.DocumentClient();
-const endBucket = process.env.END_BUCKET;
+const endBucket = process.env.FINAL_VIDEO_BUCKET;
+const transcodedBucket = process.env.TRANSCODED_SEGMENTS_BUCKET;
 const jobsTable = process.env.JOBS_TABLE;
 const videosTable = process.env.VIDEOS_TABLE;
 
@@ -109,7 +110,7 @@ const incrementVersionCount = async ({ videoId }) => {
 
 const concatHttpToS3 = async (jobData) => {
   const { id: jobId, filename, outputType, outputKey } = jobData;
-  const manifestPath = `https://bento-transcoded-segments.s3.amazonaws.com/${jobId}/manifest.ffcat`;
+  const manifestPath = `https://${transcodedBucket}.s3.amazonaws.com/${jobId}/manifest.ffcat`;
   // const videoKey = `${jobId}-${filename}${outputType}`;
   const s3Path = `s3://bento-video-end/${outputKey}`;
 
