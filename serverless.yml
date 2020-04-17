@@ -1,6 +1,6 @@
 service: bento
 
-plugins: 
+plugins:
   - serverless-pseudo-parameters
 
 provider:
@@ -20,15 +20,15 @@ provider:
     SEGMENTS_TABLE: ${self:custom.segments-table}
     VIDEOS_TABLE: ${self:custom.videos-table}
     #AWS cli layer
-    LD_LIBRARY_PATH:	"/opt/awscli/lib"
-    PYTHONHOME:	"/opt/awscli/lib/python2.7"
-    PYTHONPATH:	"/opt/awscli/lib/python2.7:/opt/awscli/lib/python2.7/lib-dynload"
-    
-  iamManagedPolicies: 
+    LD_LIBRARY_PATH: "/opt/awscli/lib"
+    PYTHONHOME: "/opt/awscli/lib/python2.7"
+    PYTHONPATH: "/opt/awscli/lib/python2.7:/opt/awscli/lib/python2.7/lib-dynload"
+
+  iamManagedPolicies:
     - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
     - "arn:aws:iam::aws:policy/AWSLambdaFullAccess"
     - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
-    
+
   # deploymentBucket:
   #   name: "bento-dev-serverlessdeploymentbucket-12gci3jitxehg"
 
@@ -36,48 +36,49 @@ custom:
   #S3
   video-upload-bucket:
     Ref: videoUploadBucket
-  transcoded-segments-bucket: 
+  transcoded-segments-bucket:
     Ref: transcodedSegmentsBucket
-  processed-videos-bucket: 
+  processed-videos-bucket:
     Ref: processedVideosBucket
   #DDB
   jobs-table: BentoJobs
   segments-table: BentoSegments
   videos-table: BentoVideos
-     
+
 functions:
   recordUpload:
     handler: bentoRecordUpload/recordUpload.recordUpload
-    name: recordUploader       
+    name: recordUploader
+    memorySize: 512
     # provisionedConcurrency:
     # reserverdConcurrency:
-    # timeout: 
+    # timeout:
     layers:
       - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
-      # - {Ref: FfmpegLambdaLayer}     
+      # - {Ref: FfmpegLambdaLayer}
 
   executor:
     handler: bentoExecutor/executor.execute
-    name: executor       
+    name: executor
     # provisionedConcurrency:
     # reserverdConcurrency:
-    # timeout: 
+    # timeout:
     environment:
       TRANSCODER_LAMBDA_ADDRESS: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:transcoder
     layers:
       - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
-      # - {Ref: FfmpegLambdaLayer}     
-    
+      # - {Ref: FfmpegLambdaLayer}
+
   transcoder:
     handler: bentoTranscoder/transcoder.transcode
     name: transcoder
     memorySize: 3008
     # provisionedConcurrency:
     # reserverdConcurrency:
-    # timeout: 
+    # timeout:
     layers:
       - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
-      # - {Ref: FfmpegLambdaLayer}     
+      # - {Ref: FfmpegLambdaLayer}
 
   mergeInvoker:
     handler: bentoMergeInvoker/mergeInvoker.mergeInvoke
@@ -95,23 +96,23 @@ functions:
       MERGER_LAMBDA_ADDRESS: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:merger
     # provisionedConcurrency:
     # reserverdConcurrency:
-    # timeout: 
+    # timeout:
 
   merger:
     handler: bentoMerger/merger.merge
     name: merger
     # provisionedConcurrency:
     # reserverdConcurrency:
-    # timeout: 
+    # timeout:
     layers:
       - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
-      # - {Ref: FfmpegLambdaLayer}     
-    
+      # - {Ref: FfmpegLambdaLayer}
+
 # layers:
 #   ffmpeg:
 #     path: layers/ffmpeg_layer
-  # awscli:
-  #   path: layer/awscli_layer  
+# awscli:
+#   path: layer/awscli_layer
 
 resources:
   Resources:
@@ -121,27 +122,55 @@ resources:
       Properties:
         TableName: ${self:custom.videos-table}
         AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: N
+        - AttributeName: id
+          AttributeType: S
         KeySchema:
-          - AttributeName: id
-            KeyType: HASH
+        - AttributeName: id
+          KeyType: HASH
         ProvisionedThroughput:
-          ReadCapacityUnits: 10
-          WriteCapacityUnits: 10
+          ReadCapacityUnits: '5'
+          WriteCapacityUnits: '5'
     jobsTable:
       Type: AWS::DynamoDB::Table
       Properties:
         TableName: ${self:custom.jobs-table}
         AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: N
+        - AttributeName: id
+          AttributeType: N
+        - AttributeName: filename
+          AttributeType: S
+        - AttributeName: outputType
+          AttributeType: S
+        - AttributeName: resolution
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: versionUrl
+          AttributeType: S
+        - AttributeName: videoId
+          AttributeType: S
         KeySchema:
-          - AttributeName: id
+        - AttributeName: id
+          KeyType: HASH
+        GlobalSecondaryIndexes:
+        - IndexName: VideoId
+          KeySchema:
+          - AttributeName: videoId
             KeyType: HASH
+          Projection:
+            NonKeyAttributes:
+            - filename
+            - outputType
+            - resolution
+            - versionUrl
+            - status
+            ProjectionType: INCLUDE
+          ProvisionedThroughput:
+            ReadCapacityUnits: "5"
+            WriteCapacityUnits: "5"
         ProvisionedThroughput:
-          ReadCapacityUnits: 10
-          WriteCapacityUnits: 10
+          ReadCapacityUnits: '5'
+          WriteCapacityUnits: '5'
         StreamSpecification:
           StreamViewType: NEW_IMAGE
     segmentsTable:
@@ -149,22 +178,22 @@ resources:
       Properties:
         TableName: ${self:custom.segments-table}
         AttributeDefinitions:
-          - AttributeName: jobId
-            AttributeType: N
-          - AttributeName: id
-            AttributeType: S
+        - AttributeName: jobId
+          AttributeType: N
+        - AttributeName: id
+          AttributeType: S
         KeySchema:
-          - AttributeName: jobId
-            KeyType: HASH
-          - AttributeName: id
-            KeyType: RANGE
+        - AttributeName: jobId
+          KeyType: HASH
+        - AttributeName: id
+          KeyType: RANGE
         ProvisionedThroughput:
-          ReadCapacityUnits: 10
-          WriteCapacityUnits: 10
+          ReadCapacityUnits: '5'
+          WriteCapacityUnits: '5'
     #S3
     videoUploadBucket:
       Type: AWS::S3::Bucket
-      Properties: 
+      Properties:
         CorsConfiguration:
           CorsRules:
             - AllowedMethods:
@@ -179,7 +208,7 @@ resources:
 
     processedVideosBucket:
       Type: AWS::S3::Bucket
-      Properties: 
+      Properties:
         CorsConfiguration:
           CorsRules:
             - AllowedMethods:
