@@ -58,7 +58,7 @@ const getSegmentFilenames = async (jobId) => {
   return filenames;
 };
 
-const writeToManifest = async (jobId) => {
+const writeToManifest = async ({ id: jobId }) => {
   const filenames = await getSegmentFilenames(jobId);
   let manifest = "";
   let key;
@@ -193,7 +193,7 @@ module.exports.merge = async (event) => {
   let jobData = await getJobData(jobId);
   jobData = { ...jobData.Item };
 
-  await writeToManifest(jobId);
+  await writeToManifest(jobData);
 
   concatHttpToS3(jobData);
   unlinkSync(manifestPath);
