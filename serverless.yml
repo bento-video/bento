@@ -227,7 +227,9 @@ resources:
               Principal: "*"
               Action:
               - s3:GetObject
-              Resource: arn:aws:s3:::bento-dev-processedvideosbucket-70s04s2iaxjh/*
+              Resource: ${self:custom.processed-videos-bucket}
+              # Resource: arn:aws:s3:::bento-dev-processedvideosbucket-70s04s2iaxjh/*
+
   # Outputs:
   #   videoUploadBucketName:
   #     Value:
