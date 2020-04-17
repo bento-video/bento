@@ -1,4 +1,5 @@
-const { writeFileSync, unlinkSync, execSync } = require("child_process");
+const { execSync } = require("child_process");
+const { writeFileSync, unlinkSync } = require("fs");
 const AWS = require("aws-sdk");
 const docClient = new AWS.DynamoDB.DocumentClient();
 const s3 = new AWS.S3();
