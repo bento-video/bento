@@ -1,6 +1,7 @@
-const { execSync } = require("child_process");
+const { writeFileSync, unlinkSync, execSync } = require("child_process");
 const AWS = require("aws-sdk");
 const docClient = new AWS.DynamoDB.DocumentClient();
+const s3 = new AWS.S3();
 const endBucket = process.env.FINAL_VIDEO_BUCKET;
 const transcodedBucket = process.env.TRANSCODED_SEGMENTS_BUCKET;
 const jobsTable = process.env.JOBS_TABLE;
@@ -71,7 +72,7 @@ const writeToManifest = async ({ id: jobId }) => {
 
     key = `${jobId}/${filename}.mp4`;
     signedParams = {
-      Bucket: transcodedChunksBucket,
+      Bucket: transcodedBucket,
       Key: key,
       Expires: 900,
     };
