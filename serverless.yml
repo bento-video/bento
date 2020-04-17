@@ -215,6 +215,19 @@ resources:
                 - "*"
               AllowedHeaders:
                 - "*"
+    ProcessedVideosS3BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket:
+          Ref: processedVideosBucket
+        PolicyDocument:
+          Statement:
+            - Sid: PublicReadGetObject
+              Effect: Allow
+              Principal: "*"
+              Action:
+              - s3:GetObject
+              Resource: arn:aws:s3:::bento-dev-processedvideosbucket-70s04s2iaxjh/*
   # Outputs:
   #   videoUploadBucketName:
   #     Value:
