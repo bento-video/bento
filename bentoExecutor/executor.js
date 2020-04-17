@@ -176,18 +176,18 @@ const dbWriter = (params, item, simulateInvoke) => {
   });
 };
 
-const writeToManifest = (filenames, jobId) => {
-  const segmentPath = `file https://${transcodedBucket}.s3.amazonaws.com/${jobId}/`;
-  let manifest = "";
-  for (let segment of filenames) {
-    manifest += `${segmentPath}${segment}.mp4\n`;
-  }
-  console.log("writing manifest: ", manifest);
-  writeFileSync(manifestPath, manifest, (err) => {
-    console.log(`${err ? err : "successfully wrote to manifest"}`);
-  });
-  return readFileSync(manifestPath);
-};
+// const writeToManifest = (filenames, jobId) => {
+//   const segmentPath = `file https://${transcodedBucket}.s3.amazonaws.com/${jobId}/`;
+//   let manifest = "";
+//   for (let segment of filenames) {
+//     manifest += `${segmentPath}${segment}.mp4\n`;
+//   }
+//   console.log("writing manifest: ", manifest);
+//   writeFileSync(manifestPath, manifest, (err) => {
+//     console.log(`${err ? err : "successfully wrote to manifest"}`);
+//   });
+//   return readFileSync(manifestPath);
+// };
 
 const invokeTranscode = async (payload, simulateInvoke) => {
   const invokeParams = {
@@ -271,18 +271,18 @@ module.exports.execute = async (event) => {
     simulateInvoke,
   });
 
-  const manifest = writeToManifest(segmentFilenames, jobId);
+  // const manifest = writeToManifest(segmentFilenames, jobId);
 
-  if (!simulateInvoke) {
-    console.log("Putting manifest in transcoded bucket");
-    await s3
-      .putObject({
-        Bucket: transcodedBucket,
-        Key: `${jobId}/manifest.ffcat`,
-        Body: manifest,
-      })
-      .promise();
-  }
+  // if (!simulateInvoke) {
+  //   console.log("Putting manifest in transcoded bucket");
+  //   await s3
+  //     .putObject({
+  //       Bucket: transcodedBucket,
+  //       Key: `${jobId}/manifest.ffcat`,
+  //       Body: manifest,
+  //     })
+  //     .promise();
+  // }
 
   console.log(
     `${segmentFilenames.length} segments to transcode. ${
@@ -305,6 +305,6 @@ module.exports.execute = async (event) => {
     await invokeTranscode(payload, simulateInvoke);
   }
 
-  unlinkSync(manifestPath);
+  // unlinkSync(manifestPath);
   unlinkSync(probeKeyframesPath);
 };
