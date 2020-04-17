@@ -177,10 +177,9 @@ const dbWriter = (params, item, simulateInvoke) => {
 };
 
 const writeToManifest = (filenames, jobId) => {
-  const segmentPath = `file https://bento-transcoded-segments.s3.amazonaws.com/${jobId}/`;
+  const segmentPath = `file https://${transcodedBucket}.s3.amazonaws.com/${jobId}/`;
   let manifest = "";
   for (let segment of filenames) {
-    // manifest += `file ${segment}.mp4\n`;
     manifest += `${segmentPath}${segment}.mp4\n`;
   }
   console.log("writing manifest: ", manifest);
@@ -213,7 +212,7 @@ const invokeTranscode = async (payload, simulateInvoke) => {
   await lambda.invoke(invokeParams).promise();
 };
 
-module.exports.startPipeline = async (event) => {
+module.exports.execute = async (event) => {
   const INVOKE_LIMIT = event.invokeLimit || 600;
   const eventSegmentDuration = event.segmentDuration || 6;
 

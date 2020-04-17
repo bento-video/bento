@@ -196,16 +196,7 @@ const recordTransaction = async (segmentData) => {
   }
 };
 
-/*
-{
-  key: 'humility_original.mp4',
-  jobId: '1584375307747',
-  segmentName: '1584375307747-039',
-  startTime: '92',
-  endTime: '98.000000'
-}
-*/
-module.exports.transcodeVideo = async (event) => {
+module.exports.transcode = async (event) => {
   const { simulateInvoke, tryQuick } = event;
 
   if (!event.segmentData) {

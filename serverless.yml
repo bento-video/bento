@@ -10,6 +10,7 @@ provider:
   region: us-east-1
   timeout: 900
   versionFunctions: false
+  
   environment:
     #S3
     NEW_VIDEO_BUCKET: ${self:custom.video-upload-bucket}
@@ -45,6 +46,11 @@ custom:
   segments-table: BentoSegments
   videos-table: BentoVideos
 
+package:
+  individually: true
+  exclude:
+    - ".*/**"
+
 functions:
   recordUpload:
     handler: bentoRecordUpload/recordUpload.recordUpload
@@ -64,7 +70,7 @@ functions:
     # reserverdConcurrency:
     # timeout:
     environment:
-      TRANSCODER_LAMBDA_ADDRESS: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:transcoder
+      TRANSCODE_LAMBDA_ADDRESS: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:transcoder
     layers:
       - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
       # - {Ref: FfmpegLambdaLayer}
@@ -105,6 +111,7 @@ functions:
     # reserverdConcurrency:
     # timeout:
     layers:
+      - arn:aws:lambda:us-east-1:782443143633:layer:awscli-layer:1
       - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
       # - {Ref: FfmpegLambdaLayer}
 
@@ -137,16 +144,6 @@ resources:
         AttributeDefinitions:
         - AttributeName: id
           AttributeType: N
-        - AttributeName: filename
-          AttributeType: S
-        - AttributeName: outputType
-          AttributeType: S
-        - AttributeName: resolution
-          AttributeType: S
-        - AttributeName: status
-          AttributeType: S
-        - AttributeName: versionUrl
-          AttributeType: S
         - AttributeName: videoId
           AttributeType: S
         KeySchema:
