@@ -42,7 +42,7 @@ make the following change in the *makefile* (found within the `aws-lambda-layer-
 ### Build and upload the awscli layer
 `make layer-build-python27 layer-zip layer-upload layer-publish`
 
-## 4. add awsCLI layer to merge function
+## 4. Add the awsCLI layer to the Merger Lambda
 
 Enter the following:
 
