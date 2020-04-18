@@ -7,39 +7,18 @@
 - [AWS](https://aws.amazon.com) account
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) installed and [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html)
 
+## 1. Clone [Bento](https://github.com/bento-video/bento.git) repo
+create a new folder to store the Bento app, within this new folder:
 
-## 1. Install [Serverless](https://serverless.com/framework/docs/getting-started/) framework
+`git clone https://github.com/bento-video/bento.git`
 
-`npm install -g serverless`
+`mv ./bento/pipeline-setup.js ./`
 
-## 2. Install Serverless [pseudo-parameters](https://serverless.com/plugins/serverless-pseudo-parameters/) package 
+## 2. Create ffmpeg layer, install [Serverless](https://serverless.com/framework/docs/getting-started/) framework, install Serverless [pseudo-parameters](https://serverless.com/plugins/serverless-pseudo-parameters/) package, deploy Bento 
 
-`npm install serverless-pseudo-parameters`
+`node pipeline-setup.js`
 
-## 3. Create ffmpeg Lambda layer
-create a new folder (anywhere on your file system that isn't within a git repository), within that folder:
-
-`git clone https://github.com/bento-video/ffmpeg-lambda-layer.git`
-
-`cd ffmpeg-lambda-layer`
-
-`mkdir layer`
-
-`cd layer`
-
-`curl -O https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz`
-
-`tar xf ffmpeg-git-amd64-static.tar.xz`
-
-`rm ffmpeg-git-amd64-static.tar.xz`
-
-`mv ffmpeg-git-*-amd64-static ffmpeg`
-
-`cd ..`
-
-`sls deploy`
-
-## 4. Create [AWS CLI Lambda layer](https://github.com/aws-samples/aws-lambda-layer-awscli/tree/node12-runtime-support)
+## 3. Create [AWS CLI Lambda layer](https://github.com/aws-samples/aws-lambda-layer-awscli/tree/node12-runtime-support)
 ### Clone Node 12 runtime branch 
 create a new folder (anywhere on your file system that isn't within a git repository), within this new folder:
 
@@ -63,30 +42,14 @@ make the following change in the *makefile* (found within the `aws-lambda-layer-
 ### Build and upload the awscli layer
 `make layer-build-python27 layer-zip layer-upload layer-publish`
 
-## 5. Clone and deploy[Bento] (https://github.com/bento-video/bento.git) repo
-create a new folder to store the Bento app, within this new folder:
+## 4. add awsCLI layer to merge function
 
-`git clone https://github.com/bento-video/bento.git`
+Enter the following `aws lambda list-layers`, it will list your Layer attributes, the arn of the awsCLI and ffmpeg layers are needed for the following command:
 
-`cd bento`
+aws lambda update-function-configuration --function-name merger \
+--layers awscli-layer-arn
 
-`sls deploy`
-
-## 6. add awsCLI layer to merge function
-
-- login to AWS console
-- navigate to Lambda services
-- click on `Layers`
-- take note of `awscli-layer`'s arn
-- click on `Functions`
-- select `merger`
-- click `Layers` found underneath `merger` adjacent to Lambda icon
-- select `Add a layer` below
-- select `Provide a layer version ARN`
-- enter the `Layer version ARN`
-
-
-
+`aws lambda update-function-configuration --function-name merger --layers awsCLI-layer-arn ffmpeg-layer-arn`
 
 
 
