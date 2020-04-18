@@ -111,7 +111,7 @@ functions:
     # reserverdConcurrency:
     # timeout:
     layers:
-      - ${cf:awscli-layer-dev.AwscliLambdaExport}
+      # - ${cf:awscli-layer-dev.AwscliLambdaExport}
       - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
       # - {Ref: FfmpegLambdaLayer}
 
