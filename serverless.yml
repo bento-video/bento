@@ -51,7 +51,7 @@ custom:
 functions:
   recordUpload:
     handler: bentoRecordUpload/recordUpload.recordUpload
-    name: recordUploader
+    name: recordUpload
     memorySize: 512
     # provisionedConcurrency:
     # reserverdConcurrency:
@@ -224,7 +224,8 @@ resources:
               Principal: "*"
               Action:
               - s3:GetObject
-              Resource: ${self:custom.processed-videos-bucket}
+              Resource: {Ref: processedVideosBucket}
+              # Resource: ${self:custom.processed-videos-bucket}
               # Resource: arn:aws:s3:::bento-dev-processedvideosbucket-70s04s2iaxjh/*
 
   # Outputs:
