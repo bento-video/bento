@@ -44,10 +44,11 @@ make the following change in the *makefile* (found within the `aws-lambda-layer-
 
 ## 4. add awsCLI layer to merge function
 
-Enter the following `aws lambda list-layers`, it will list your Layer attributes, the arn of the awsCLI and ffmpeg layers are needed for the following command:
+Enter the following:
 
-aws lambda update-function-configuration --function-name merger \
---layers awscli-layer-arn
+`aws lambda list-layers`
+
+it will list your Layer attributes, the **arn** of the **awsCLI and ffmpeg layers** are needed for the following command:
 
 `aws lambda update-function-configuration --function-name merger --layers awsCLI-layer-arn ffmpeg-layer-arn`
 
