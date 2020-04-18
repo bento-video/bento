@@ -30,9 +30,6 @@ provider:
     - "arn:aws:iam::aws:policy/AWSLambdaFullAccess"
     - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
 
-  # deploymentBucket:
-  #   name: "bento-dev-serverlessdeploymentbucket-12gci3jitxehg"
-
 custom:
   #S3
   video-upload-bucket:
@@ -46,10 +43,10 @@ custom:
   segments-table: BentoSegments
   videos-table: BentoVideos
 
-package:
-  individually: true
-  exclude:
-    - ".*/**"
+# package:
+#   individually: true
+#   exclude:
+#     - ".*/**"
 
 functions:
   recordUpload:
