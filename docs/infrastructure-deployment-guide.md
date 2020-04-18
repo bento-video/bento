@@ -14,7 +14,7 @@ create a new folder to store the Bento app, within this new folder:
 
 `mv ./bento/pipeline-setup.js ./`
 
-## 2. Create ffmpeg layer, install [Serverless](https://serverless.com/framework/docs/getting-started/) framework, install Serverless [pseudo-parameters](https://serverless.com/plugins/serverless-pseudo-parameters/) package, deploy Bento 
+## 2. Create [ffmpeg](https://www.ffmpeg.org/) layer, install [Serverless](https://serverless.com/framework/docs/getting-started/) framework, install Serverless [pseudo-parameters](https://serverless.com/plugins/serverless-pseudo-parameters/) package, deploy Bento 
 
 `node pipeline-setup.js`
 
@@ -48,7 +48,7 @@ Enter the following:
 
 `aws lambda list-layers`
 
-it will list your Layer attributes, the **arn** of the **awsCLI and ffmpeg layers** are needed for the following command:
+it will list your Layer attributes, the **arn** of the **awsCLI** and **ffmpeg layers** are needed for the following command:
 
 `aws lambda update-function-configuration --function-name merger --layers awsCLI-layer-arn ffmpeg-layer-arn`
 
