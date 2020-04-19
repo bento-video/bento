@@ -84,9 +84,9 @@ create a new folder (anywhere on your file system that isn't within a git reposi
 
 the following variable references the public endpoint of your EC2 instance
 
-`ENV PUBLIC_EC2_IP`
+`ENV PUBLIC_EC2_IP` ec2IP:3001
 
-the hostname and needs to be replaced with your EC2 instance's public IP or DNS name, both values are returned withing the output the following command:
+the hostname and port need to be replaced with your EC2 instance's public IP or DNS name, both values are returned withing the output the following command:
 
 `aws ec2 describe-instances`
  
