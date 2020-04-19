@@ -1,4 +1,4 @@
-# AWS Infrastructure Deployment Guide
+# Bento Dashboard Deployment Guide
 
 ## Prerequisites
 EC2 instance with the following installed:
@@ -126,7 +126,7 @@ add a policy to this bucket to enable GET requests to the objects (files) of thi
 	}
 	]
 } 
-
+```
 
 
 
