@@ -1,4 +1,4 @@
-# AWS Infrastructure Deployment Guide
+# Bento Pipeline (on AWS Resources) Deployment Guide
 
 ## Prerequisites
 - [Node](https://nodejs.org/en/) 6 or higher
