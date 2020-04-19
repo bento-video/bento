@@ -1,82 +1,42 @@
 # AWS Infrastructure Deployment Guide
 
 ## Prerequisites
+EC2 instance with the following installed:
 - [Node](https://nodejs.org/en/) 6 or higher
 - [npm](https://www.npmjs.com/get-npm)
 - [Docker](https://www.docker.com/), ensure docker daemon is running
 - [Docker Hub Account](https://hub.docker.com), and log in to [CLI](https://docs.docker.com/engine/reference/commandline/login/)
-- [AWS](https://aws.amazon.com) account
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) installed and [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html)
+- AWS EC2 type - Amazon Linux 2 
 
-
-## 1. Install [Docker](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/docker-basics.html) on Amazon Linux 2
-
-connect to your EC2 instance within terminal
-
-`sudo yum update -y`
-
-`sudo amazon-linux-extras install docker`
-
-`sudo service docker start`
-
-`sudo usermod -a -G docker ec2-user`
-
-## 2. Create and run the React Dashboard Docker container
+## 1. Create the Bento Node Express Docker image
 ### Clone repo
-create a new folder (anywhere on your file system that isn't within a git repository), within that folder:
-
-`git clone https://github.com/bento-video/bento-dashboard.git`
-
-`cd bento-dashboard`
-
-### Update the Dockerfile
-
-the following environment variables require values: 
-
-`ENV PUBLIC_EC2_IP`
-
-your EC2 instance's public IP or DNS, can be found within the return of the following command: `aws ec2 describe-instances`
-  
-### Build and tag a Docker image
-`docker build -t yourhubusername/bentodashboard .`
-
-### Push image to Docker Hub
-`docker push yourhubusername/bentodashboard`
-
-## 3. Create and run the Node Express Docker container
-connect to your EC2 instance within terminal
-
-`docker run --rm -d -v ${PWD}:/app -v /app/node_modules -v app/package.json -p 3001:3001 yourhubusername/bentobackend`
-
-## 4. Create and run the Node Express Docker container
-connect to your EC2 instance within terminal
-
-`docker run -it --rm -d -v ${PWD}:/app -v /app/node_modules -v /app/package.json -p 4000:4000 mikedr40/bentodashboard`
-
-## 5. Create the Node Express Docker image
-### Clone repo
-create a new folder (anywhere on your file system that isn't within a git repository), within that folder:
+create a new folder on your local machine (anywhere on your file system that isn't within a git repository), within that folder:
 
 `git clone https://github.com/thinkybeast/bento-dashboard-backend.git`
 
 `cd bento-dashboard-backend`
 
 ### Update the Dockerfile
-the following environment variables require values: 
+within the Dockerfile the following environment variables requires a value: 
 
-`ENV START_BUCKET` 
+- `ENV START_BUCKET` 
 
-S3 bucket that includes **bento-dev-videouploadbucket** in its name, command to view all your bucket names: `aws s3api list-buckets --query "Buckets[].Name"`
+enter the following command to view view all of your bucket names:
 
-`ENV RECORD_UPLOAD_LAMBDA`
+`aws s3api list-buckets --query "Buckets[].Name"`
 
-arn of the recordUpload Lambda, the following command lists the properties of this Lambda: `aws lambda get-function --function-name  recordUpload`
+there will a bucket with **bento-dev-videouploadbucket** in its name use the full bucket name for the value of **ENV START_BUCKET** 
 
-`ENV REGION` your AWS region 
+- `ENV RECORD_UPLOAD_LAMBDA`
 
-`ENV AWS_ACCESS_KEY_ID` 
+**arn** of the **recordUpload** Lambda, the following command lists the properties of this Lambda: `aws lambda get-function --function-name  recordUpload`
 
-`ENV AWS_SECRET_ACCESS_KEY`
+- `ENV REGION` your AWS region 
+
+- `ENV AWS_ACCESS_KEY_ID` your AWS access key
+
+- `ENV AWS_SECRET_ACCESS_KEY` your AWS secret access key
 
 ### Build and tag a Docker image
 `docker build -t yourhubusername/bentobackend .`
@@ -86,25 +46,52 @@ IMPORTANT, immediately after pushing this image login to [Docker hub](https://hu
 
 `docker push yourhubusername/bentobackend`
 
-## 6. Create and run the Node Express Docker container
-connect to your EC2 instance within terminal
+## 2. Install [Docker](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/docker-basics.html) on Amazon Linux 2
+connect to your EC2 instance within terminal and enter the following commands:
+
+`sudo yum update -y`
+
+`sudo amazon-linux-extras install docker`
+
+`sudo service docker start`
+
+`sudo usermod -a -G docker ec2-user`
+
+`sudo chmod 666 /var/run/docker.sock`
+
+## 3. Create and run the Bento Node Express Docker container
+connect to your EC2 instance and log in to Docker hub (`docker login --username=yourhubusername`)within terminal and then enter the following command:
 
 `docker run --rm -d -v ${PWD}:/app -v /app/node_modules -v app/package.json -p 3001:3001 yourhubusername/bentobackend`
 
-## 7. Modify EC2 Security Group settings
+## 4. Build the Bento React Dashboard 
+### Clone repo
+create a new folder (anywhere on your file system that isn't within a git repository), within that folder enter the following command:
+
+`git clone https://github.com/bento-video/bento-dashboard.git`
+
+`cd bento-dashboard`
+
+### Update .env.production
+
+the following variable references the public endpoint of your EC2 instance
+
+`ENV PUBLIC_EC2_IP`
+
+the hostname and needs to be replaced with your EC2 instance's public IP or DNS name, both values are returned withing the output the following command:
+
+`aws ec2 describe-instances`
+ 
+### Build React app
+`npm install build`
+
+`npm run build`
+
+## 6. Modify EC2 Security Group settings
 within AWS console modify the inbound rules for your EC2 instance
 
-1. add a rule for React
+add a rule for Expresss
 
-Type: Custom TCP
-Protocol: TCP
-Port range: 4000
-Source: My IP (or any that you choose)
-
-2. add a rule for Expresss
-
-Type: Custom TCP
-Protocol: TCP
-Port range: 3001
-Source: My IP (or any that you choose)
+**Type**: Custom TCP, **Protocol**: TCP, **Port range**: 3001
+**Source**: My IP (or any that you choose)
 
