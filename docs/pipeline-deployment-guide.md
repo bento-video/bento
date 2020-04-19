@@ -14,6 +14,10 @@ create a new folder to store the Bento app, within this new folder:
 
 `mv ./bento/pipeline-setup.js ./`
 
+### customize S3 bucket policy (optional)
+
+Within the root folder of the cloned Bento repo above there is a **serverless.yml** deployment file. By default the S3 bucket that contains your processed videos will allow GET requests originating from any IP address. If you wish to restrict access to only a given IP address edit line 20 of the **serverless.yml** file. Note that you will have to update this IP address whenever your IP address changes. Refer to [AWS docs](https://docs.aws.amazon.com/AmazonS3/latest/dev/example-bucket-policies.html#example-bucket-policies-use-case-2) for further details. 
+
 ## 2. Create [ffmpeg](https://www.ffmpeg.org/) layer, install [Serverless](https://serverless.com/framework/docs/getting-started/) framework, install Serverless [pseudo-parameters](https://serverless.com/plugins/serverless-pseudo-parameters/) package, deploy Bento 
 
 `node pipeline-setup.js`
