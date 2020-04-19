@@ -64,7 +64,15 @@ connect to your EC2 instance and log in to Docker hub (`docker login --username=
 
 `docker run --rm -d -v ${PWD}:/app -v /app/node_modules -v app/package.json -p 3001:3001 yourhubusername/bentobackend`
 
-## 4. Build the Bento React Dashboard 
+## 4. Modify EC2 Security Group settings
+within AWS console modify the inbound rules for your EC2 instance
+
+add a rule for Expresss
+
+**Type**: Custom TCP, **Protocol**: TCP, **Port range**: 3001
+**Source**: My IP (or any that you choose)
+
+## 5. Build the Bento React Dashboard 
 ### Clone repo
 create a new folder (anywhere on your file system that isn't within a git repository), within that folder enter the following command:
 
@@ -87,11 +95,38 @@ the hostname and needs to be replaced with your EC2 instance's public IP or DNS 
 
 `npm run build`
 
-## 6. Modify EC2 Security Group settings
-within AWS console modify the inbound rules for your EC2 instance
+## Serve React build files on S3
+within the AWS S3 console:
 
-add a rule for Expresss
+create a new S3 bucket
 
-**Type**: Custom TCP, **Protocol**: TCP, **Port range**: 3001
-**Source**: My IP (or any that you choose)
+remove the **Block all public access** selection
+
+move all the files (and folder) within **bento-dashboard/build** to this bucket
+
+navigate to the **Properties** tag and select **Static website hosting**
+
+select **Use this bucket to host a website**, **Index document**: index.html
+
+copy **Endpoint**, this is your endpoint to access the Bento Dashboard front-end
+
+add a policy to this bucket to enable GET requests to the objects (files) of this bucket (note, this will allow anyone with the above end point to access these static React files however access to the content of your pipeline is still secured with the entry IP address you configure for the Express app):
+```javascript
+{
+	"Version":"2008-10-17",
+	"Statement":[{
+	"Sid":"AllowPublicRead",
+		"Effect":"Allow",
+		"Principal": {
+			"AWS": "*"
+			},
+		"Action":["s3:GetObject"],
+		"Resource":["arn:aws:s3:::bucket/*"
+		]
+	}
+	]
+} 
+
+
+
 
