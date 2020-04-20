@@ -8,7 +8,7 @@
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) installed and [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html)
 
 ## 1. Clone [Bento](https://github.com/bento-video/bento.git) repo
-create a new folder to store the Bento app, within this new folder:
+create a new folder to store the Bento app, we'll refer to this folder as the **Bento root folder**, within this new folder:
 
 `git clone https://github.com/bento-video/bento.git`
 
@@ -16,7 +16,7 @@ create a new folder to store the Bento app, within this new folder:
 
 ### customize S3 bucket policy (optional)
 
-Within the root folder of the cloned Bento repo above there is a **serverless.yml** deployment file. By default the S3 bucket that contains your processed videos will allow GET requests originating from any IP address. If you wish to restrict access to only a given IP address edit line 20 of the **serverless.yml** file. Note that you will have to update this IP address whenever your IP address changes. Refer to [AWS docs](https://docs.aws.amazon.com/AmazonS3/latest/dev/example-bucket-policies.html#example-bucket-policies-use-case-2) for further details. 
+Within the *Bento root folder* there is a **serverless.yml** deployment file. By default the S3 bucket that contains your processed videos will allow GET requests originating from any IP address. If you wish to restrict access to only a given IP address edit line 20 of the **serverless.yml** file. Note that you will have to update this IP address whenever your IP address changes. Refer to [AWS docs](https://docs.aws.amazon.com/AmazonS3/latest/dev/example-bucket-policies.html#example-bucket-policies-use-case-2) for further details. 
 
 ## 2. Create [ffmpeg](https://www.ffmpeg.org/) layer, install [Serverless](https://serverless.com/framework/docs/getting-started/) framework, install Serverless [pseudo-parameters](https://serverless.com/plugins/serverless-pseudo-parameters/) package, deploy Bento 
 
@@ -24,7 +24,7 @@ Within the root folder of the cloned Bento repo above there is a **serverless.ym
 
 ## 3. Create [AWS CLI Lambda layer](https://github.com/aws-samples/aws-lambda-layer-awscli/tree/node12-runtime-support)
 ### Clone Node 12 runtime branch 
-create a new folder (anywhere on your file system that isn't within a git repository), within this new folder:
+within *Bento root folder* create a new folder, within this new folder:
 
 `git clone -b node12-runtime-support https://github.com/aws-samples/aws-lambda-layer-awscli.git`
 
