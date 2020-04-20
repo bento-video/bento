@@ -111,7 +111,7 @@ functions:
 resources:
   Resources:
     #DDB
-    videosTable:
+    BentoVideos:
       Type: AWS::DynamoDB::Table
       Properties:
         TableName: ${self:custom.videos-table}
