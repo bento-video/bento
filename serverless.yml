@@ -30,9 +30,6 @@ provider:
     - "arn:aws:iam::aws:policy/AWSLambdaFullAccess"
     - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
 
-  # deploymentBucket:
-  #   name: "bento-dev-serverlessdeploymentbucket-12gci3jitxehg"
-
 custom:
   #S3
   video-upload-bucket:
@@ -46,22 +43,21 @@ custom:
   segments-table: BentoSegments
   videos-table: BentoVideos
 
-package:
-  individually: true
-  exclude:
-    - ".*/**"
+# package:
+#   individually: true
+#   exclude:
+#     - ".*/**"
 
 functions:
   recordUpload:
     handler: bentoRecordUpload/recordUpload.recordUpload
-    name: recordUploader
+    name: recordUpload
     memorySize: 512
     # provisionedConcurrency:
     # reserverdConcurrency:
     # timeout:
     layers:
       - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
-      # - {Ref: FfmpegLambdaLayer}
 
   executor:
     handler: bentoExecutor/executor.execute
@@ -73,7 +69,6 @@ functions:
       TRANSCODE_LAMBDA_ADDRESS: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:transcoder
     layers:
       - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
-      # - {Ref: FfmpegLambdaLayer}
 
   transcoder:
     handler: bentoTranscoder/transcoder.transcode
@@ -84,7 +79,6 @@ functions:
     # timeout:
     layers:
       - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
-      # - {Ref: FfmpegLambdaLayer}
 
   mergeInvoker:
     handler: bentoMergeInvoker/mergeInvoker.mergeInvoke
@@ -111,15 +105,8 @@ functions:
     # reserverdConcurrency:
     # timeout:
     layers:
-      - arn:aws:lambda:us-east-1:782443143633:layer:awscli-layer:1
+      # - ${cf:awscli-layer-dev.AwscliLambdaExport}
       - ${cf:ffmpeg-layer-dev.FfmpegLayerExport}
-      # - {Ref: FfmpegLambdaLayer}
-
-# layers:
-#   ffmpeg:
-#     path: layers/ffmpeg_layer
-# awscli:
-#   path: layer/awscli_layer
 
 resources:
   Resources:
@@ -227,14 +214,10 @@ resources:
               Principal: "*"
               Action:
               - s3:GetObject
-              Resource: arn:aws:s3:::bento-dev-processedvideosbucket-70s04s2iaxjh/*
-  # Outputs:
-  #   videoUploadBucketName:
-  #     Value:
-  #       Ref: videoUploadBucket
-  #   transcodedSegmentsBucket:
-  #     Value:
-  #       Ref: transcodedSegmentsBucket
-  #   processedVideosBucket:
-  #     Value:
-  #       Ref: processedVideosBucket
+              Resource:
+                Fn::Join: ['', ['arn:aws:s3:::', Ref: processedVideosBucket, '/AWSLogs/*']]
+              # Condition: {
+              #     "NotIpAddress": {"aws:SourceIp": "54.240.143.0/24"}
+              #  }
+
+  
