@@ -225,14 +225,14 @@ module.exports.execute = async (event) => {
   }
 
   const dataFromAPI = event["body-json"] ? event["body-json"] : false;
-  const { key, res, videoId } = { ...dataFromAPI };
-
+  let { key, res, videoId, jobId } = { ...dataFromAPI };
+  jobId = Number(jobId);
   console.log("EVENT IS: ", event);
   console.log("API BODY IS: ", event["body-json"]);
 
   const filePathObj = path.parse(`${key}`);
   const [fileBasename, fileExt] = [filePathObj.name, filePathObj.ext];
-  const jobId = Date.now();
+  // const jobId = Date.now();
 
   const inputPath = `https://${startBucket}.s3.amazonaws.com/${key}`;
   console.log("inputPath", inputPath);
