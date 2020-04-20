@@ -11,9 +11,9 @@ EC2 instance with the following installed:
 
 ## 1. Create the Bento Node Express Docker image
 ### Clone repo
-create a new folder on your local machine (anywhere on your file system that isn't within a git repository), within that folder:
+within the *Bento root folder* (created in the pipeline deployment process or any folder of your choosing):
 
-`git clone https://github.com/thinkybeast/bento-dashboard-backend.git`
+`git clone https://github.com/bento-video/bento-dashboard-backend.git`
 
 `cd bento-dashboard-backend`
 
@@ -32,9 +32,13 @@ there will be a bucket with **bento-dev-videouploadbucket** in its name use the 
 there will be a bucket with **bento-dev-processedvideosbucket** in its name use the full bucket name for the value of **ENV END_BUCKET** 
 
 - `ENV RECORD_UPLOAD_LAMBDA`
-- `ENV EXECUTER_LAMBDA`
+- `ENV EXECUTOR_LAMBDA`
 
-**arn** of the **recordUpload** and **executor** Lambda, the following command lists the properties of this Lambda: `aws lambda get-function --function-name  recordUpload`
+**arn** of the **recordUpload** and **executor** Lambda, the following commands lists the properties of these Lambdas: 
+
+`aws lambda get-function --function-name recordUpload`
+
+`aws lambda get-function --function-name executor`
 
 - `ENV REGION` your AWS region 
 
@@ -46,7 +50,7 @@ there will be a bucket with **bento-dev-processedvideosbucket** in its name use 
 `docker build -t yourhubusername/bentobackend .`
 
 ### Push image to Docker Hub
-IMPORTANT, immediately after pushing this image login to [Docker hub](https://hub.docker.com) and configure settings to make this repo private as it contains your AWS keys
+IMPORTANT, immediately after pushing this image login to [Docker hub](https://hub.docker.com) and configure your settings to make this repo private as it contains your AWS keys
 
 `docker push yourhubusername/bentobackend`
 
@@ -67,7 +71,6 @@ connect to your EC2 instance within terminal and enter the following commands:
 connect to your EC2 instance and log in to Docker hub (`docker login --username=yourhubusername`)within terminal and then enter the following command:
 
 `docker run --rm -d -v ${PWD}:/app -v /app/node_modules -v app/package.json -p 3001:3001 yourhubusername/bentobackend`
-`docker run --rm -v ${PWD}:/app -v /app/node_modules -v app/package.json -p 3001:3001 mikedr40/bentobackend`
 
 ## 4. Modify EC2 Security Group settings
 within AWS console modify the inbound rules for your EC2 instance
@@ -79,7 +82,7 @@ add a rule for Expresss
 
 ## 5. Build the Bento React Dashboard 
 ### Clone repo
-create a new folder (anywhere on your file system that isn't within a git repository), within that folder enter the following command:
+within the *Bento root folder* (created in the pipeline deployment process or any folder of your choosing):
 
 `git clone https://github.com/bento-video/bento-dashboard.git`
 
@@ -89,9 +92,9 @@ create a new folder (anywhere on your file system that isn't within a git reposi
 
 the following variable references the public endpoint of your EC2 instance
 
-`ENV PUBLIC_EC2_IP` ec2IP:3001
+`REACT_APP_API_ENDPOINT` 
 
-the hostname and port need to be replaced with your EC2 instance's public IP or DNS name, both values are returned withing the output the following command:
+change the hostname to your EC2 instance's public IP or DNS name, both values are returned within the output the following command:
 
 `aws ec2 describe-instances`
  
@@ -113,9 +116,9 @@ navigate to the **Properties** tag and select **Static website hosting**
 
 select **Use this bucket to host a website**, **Index document**: index.html
 
-copy **Endpoint**, this is your endpoint to access the Bento Dashboard front-end
+copy **Endpoint**, this is your endpoint to access the Bento Dashboard front-end from your browser
 
-add a policy to this bucket to enable GET requests to the objects (files) of this bucket (note, this will allow anyone with the above end point to access these static React files however access to the content of your pipeline is still secured with the entry IP address you configure for the Express app):
+add a policy (Permissions -> Bucket Policy) to this bucket to enable GET requests to the objects (files) of this bucket (note, this will allow anyone with the above end point to access these static React files however access to the content of your pipeline is still secured with the entry IP address you configured for the Express app port on EC2):
 ```javascript
 {
 	"Version":"2008-10-17",
@@ -126,7 +129,7 @@ add a policy to this bucket to enable GET requests to the objects (files) of thi
 			"AWS": "*"
 			},
 		"Action":["s3:GetObject"],
-		"Resource":["arn:aws:s3:::bucket/*"
+		"Resource":["arn:aws:s3:::yourbucketname/*"
 		]
 	}
 	]
