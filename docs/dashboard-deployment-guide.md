@@ -18,19 +18,23 @@ create a new folder on your local machine (anywhere on your file system that isn
 `cd bento-dashboard-backend`
 
 ### Update the Dockerfile
-within the Dockerfile the following environment variables requires a value: 
+within the Dockerfile the following environment variables require values: 
 
 - `ENV START_BUCKET` 
+- `ENV END_BUCKET` 
 
 enter the following command to view view all of your bucket names:
 
 `aws s3api list-buckets --query "Buckets[].Name"`
 
-there will a bucket with **bento-dev-videouploadbucket** in its name use the full bucket name for the value of **ENV START_BUCKET** 
+there will be a bucket with **bento-dev-videouploadbucket** in its name use the full bucket name for the value of **ENV START_BUCKET** 
+
+there will be a bucket with **bento-dev-processedvideosbucket** in its name use the full bucket name for the value of **ENV END_BUCKET** 
 
 - `ENV RECORD_UPLOAD_LAMBDA`
+- `ENV EXECUTER_LAMBDA`
 
-**arn** of the **recordUpload** Lambda, the following command lists the properties of this Lambda: `aws lambda get-function --function-name  recordUpload`
+**arn** of the **recordUpload** and **executor** Lambda, the following command lists the properties of this Lambda: `aws lambda get-function --function-name  recordUpload`
 
 - `ENV REGION` your AWS region 
 
@@ -63,6 +67,7 @@ connect to your EC2 instance within terminal and enter the following commands:
 connect to your EC2 instance and log in to Docker hub (`docker login --username=yourhubusername`)within terminal and then enter the following command:
 
 `docker run --rm -d -v ${PWD}:/app -v /app/node_modules -v app/package.json -p 3001:3001 yourhubusername/bentobackend`
+`docker run --rm -v ${PWD}:/app -v /app/node_modules -v app/package.json -p 3001:3001 mikedr40/bentobackend`
 
 ## 4. Modify EC2 Security Group settings
 within AWS console modify the inbound rules for your EC2 instance
