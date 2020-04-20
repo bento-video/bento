@@ -8,7 +8,7 @@ const { execSync } = require("child_process");
 const { extname } = require("path");
 
 const probeVideoDataPath = "/tmp/probeVideoData.json";
-const videosTable = "BentoVideos"; //process.env.VIDEOS_TABLE; notify Mike of this ENV var. Should be set up already. Needs to be BentoVideos rather than Videos
+const videosTable = process.env.VIDEOS_TABLE;
 
 const probeVideo = (objectUrl) => {
   const command = `/opt/ffmpeg/ffprobe -v error -show_entries stream=width,height -show_entries format=size,duration -print_format json -i "${objectUrl}" > "${probeVideoDataPath}"`;
