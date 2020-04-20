@@ -19,18 +19,18 @@ const getJobData = async (jobId) => {
   console.log("Getting data from jobs table: ", JSON.stringify(dbQueryParams));
 
   return await docClient
-    .get(dbQueryParams, function (err, data) {
-      if (err) {
-        console.error(
-          "Unable to read item. Error JSON:",
-          JSON.stringify(err, null, 2)
-        );
-      } else {
-        console.log("Get from Jobs table succeeded: ", JSON.stringify(data));
-        return data;
-      }
+    .get(dbQueryParams)
+    .promise()
+    .then((data) => {
+      console.log("Get from Jobs table succeeded: ", JSON.stringify(data));
+      return data;
     })
-    .promise();
+    .catch((err) => {
+      console.error(
+        "Unable to read item. Error JSON:",
+        JSON.stringify(err, null, 2)
+      );
+    });
 };
 
 const getSegmentFilenames = async (jobId) => {
@@ -42,20 +42,25 @@ const getSegmentFilenames = async (jobId) => {
     },
   };
 
+  console.log(
+    "Getting data from segments table: ",
+    JSON.stringify(dbQueryParams)
+  );
+
   const filenames = [];
 
-  await docClient
-    .query(dbQueryParams, function (err, data) {
-      if (err) {
-        console.error("Unable to query. Error:", JSON.stringify(err, null, 2));
-      } else {
-        console.log("Query succeeded.");
-        data.Items.forEach(function (item) {
-          filenames.push(item.filename);
-        });
-      }
+  const segmentData = await docClient
+    .query(dbQueryParams)
+    .promise()
+    .then((data) => {
+      console.log("Query succeeded.");
+      return data;
     })
-    .promise();
+    .catch((err) => {
+      console.error("Unable to query. Error:", JSON.stringify(err, null, 2));
+    });
+
+  segmentData.Items.forEach((item) => filenames.push(item.filename));
 
   return filenames;
 };
