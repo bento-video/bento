@@ -6,7 +6,7 @@ plugins:
 provider:
   name: aws
   runtime: nodejs12.x
-  stage: dev
+  stage: prod
   region: us-east-1
   timeout: 900
   versionFunctions: false
