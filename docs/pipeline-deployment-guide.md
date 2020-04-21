@@ -15,7 +15,7 @@ git clone https://github.com/bento-video/bento.git` &&
 mv ./bento/pipeline-setup.js ./
 ```
 
-### customize S3 bucket policy (optional)
+### Customize S3 bucket policy (optional)
 
 Within the *Bento root folder* there is a **serverless.yml** deployment file. By default the S3 bucket that contains your processed videos will allow GET requests originating from any IP address. If you wish to restrict access to only a given IP address edit line 20 of the **serverless.yml** file. Note that you will have to update this IP address whenever your IP address changes. Refer to [AWS docs](https://docs.aws.amazon.com/AmazonS3/latest/dev/example-bucket-policies.html#example-bucket-policies-use-case-2) for further details. 
 
