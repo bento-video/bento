@@ -30,14 +30,14 @@ enter the following command to view view all of your bucket names:
 `aws s3api list-buckets --query "Buckets[].Name"`
 ```
 
-There will be a bucket with **bento-dev-videouploadbucket** in its name. Use this bucket's full name for the value of `ENV START_BUCKET`. 
+There will be a bucket with **bento-dev-videouploadbucket** in its name. Use this bucket's full name for the value of *ENV START_BUCKET*. 
 
-There will be a bucket with **bento-dev-processedvideosbucket** in its name. Use the full bucket name for the value of `ENV END_BUCKET`. 
+There will be a bucket with **bento-dev-processedvideosbucket** in its name. Use the full bucket name for the value of *ENV END_BUCKET*. 
 
 3. `ENV RECORD_UPLOAD_LAMBDA`
 4. `ENV EXECUTOR_LAMBDA`
 
-These variables reference the **arn** of the **recordUpload** and **executor** Lambda. The following commands lists the properties of these Lambdas: 
+These variables reference the **arn** of the **recordUpload** and **executor** Lambdas. The following commands lists the properties of these Lambdas: 
 
 ```console
 aws lambda get-function --function-name recordUpload
@@ -74,7 +74,7 @@ sudo chmod 666 /var/run/docker.sock &&
 ```
 
 ## 3. Create and run the Bento Node Express Docker container
-Log in to Docker hub (`docker login --username=yourhubusername`)within your EC2 terminal and then enter the following command:
+Log in to Docker hub (`docker login --username=yourhubusername`)within your EC2 terminal and enter the following command:
 
 ```console
 docker run --rm -d -v ${PWD}:/app -v /app/node_modules -v app/package.json -p 3001:3001 yourhubusername/bentobackend
@@ -84,8 +84,11 @@ docker run --rm -d -v ${PWD}:/app -v /app/node_modules -v app/package.json -p 30
 Within AWS web console modify the inbound rules for your EC2 instance:
 
 **Type**: Custom TCP
+
 **Protocol**: TCP
+
 **Port range**: 3001
+
 **Source**: My IP (or any you want to aurhorize to interact with your Bento pipeline)
 
 ## 5. Build the Bento React Dashboard 
