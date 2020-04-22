@@ -3,7 +3,7 @@
 ## Prerequisites
 - [Node](https://nodejs.org/en/) 6 or higher
 - [npm](https://www.npmjs.com/get-npm)
-- [Docker](https://www.docker.com/), ensure docker daemon is running
+- [Docker](https://www.docker.com/), ensure Docker Engine is running
 - [AWS](https://aws.amazon.com) account
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) installed and [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html)
 
