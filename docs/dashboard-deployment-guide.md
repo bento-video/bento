@@ -2,7 +2,7 @@
 
 ## Prerequisites
 On your local machine:
-- [Docker](https://www.docker.com/), ensure Docker engine is running
+- [Docker](https://www.docker.com/), ensure Docker Engine is running
 - [Docker Hub Account](https://hub.docker.com), and log in to [CLI](https://docs.docker.com/engine/reference/commandline/login/)
 - [npm](https://www.npmjs.com/get-npm)
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) installed and [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html)
