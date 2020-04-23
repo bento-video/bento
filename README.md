@@ -3,7 +3,6 @@
 </div>
 
 <h1 align="center">Welcome to Bento</h2>
-<h2 align="center">a high speed serverless video transcoding pipeline</h2>
 
 ## Overview
 
