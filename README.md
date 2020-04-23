@@ -1,5 +1,5 @@
 ![Bento logo]
-(./bento_logo.png)
+(https://imgur.com/a/Uih4nQ9)
 
 <h1 align="center">Welcome to Bento</h1>
 
