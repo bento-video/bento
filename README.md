@@ -1,4 +1,4 @@
-![Bento logo](https://imgur.com/a/Uih4nQ9)
+![Bento logo](https://i.imgur.com/3H8JUoS.png)
 
 <h1 align="center">Welcome to Bento</h1>
 
