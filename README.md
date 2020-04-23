@@ -1,8 +1,13 @@
-![Bento logo](https://i.imgur.com/3H8JUoS.png)
+<div align="center">
+  <img src="https://i.imgur.com/3H8JUoS.png?1">
+</div>
 
-<h1 align="center">Welcome to Bento</h1>
+<!-- <h1 align="center">Welcome to Bento</h2> -->
+<h1 align="center">a high speed serverless video transcoding pipeline</h2>
 
-<p align="center">An open-source high speed serverless video transcoding pipeline</p>
+## Overview
+
+[Bento](https://bento-video.github.io/) is a blazing fast serverless video transcoding pipeline that can be easily deployed to Amazon Web Services (AWS).  It is built for individuals and small businesses seeking a fast, simple, open-source solution to their video transcoding needs.
 
 ## Getting Started
 
