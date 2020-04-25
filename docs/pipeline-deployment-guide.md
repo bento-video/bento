@@ -11,8 +11,7 @@
 Create a new folder to store the Bento app, we'll refer to this folder as the **Bento root folder**, within this folder:
 
 ```console
-git clone https://github.com/bento-video/bento.git` &&
-mv ./bento/pipeline-setup.js ./
+git clone https://github.com/bento-video/bento.git && mv ./bento/pipeline-setup.js ./
 ```
 
 ### Customize S3 bucket policy (optional)
