@@ -68,7 +68,7 @@ const main = async () => {
 
   // install Serverless pseudo-parameters plugin
   console.log('installing Serverless pseudo-parameters plugin');
-  await spawnProcess('npm', ['init', '--prefix', './bento']);
+  await spawnProcess('npm', ['init -y', '--prefix', './bento']);
   await spawnProcess('npm', ['install', '--prefix', './bento', '-g', 'serverless-pseudo-parameters']);
 
   // deploy ffmpeg 
