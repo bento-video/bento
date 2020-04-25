@@ -52,7 +52,7 @@ An S3 bucket name is needed. You can use the bucket Serverless created during th
 aws s3 ls
 ```
 
-The newly created bucket's name will contain `bento-prod-serverlessdeploymentbucket`, take note of the bucket's full name. Make the following change in the *makefile* (found within the `aws-lambda-layer-awscli` folder):
+The newly created bucket's name will contain `ffmpeg-layer-dev-serverlessdeploymentbucket`, take note of the bucket's full name. Make the following change in the *makefile* (found within the `aws-lambda-layer-awscli` folder):
 
 ```console
 S3BUCKET ?= your-bucket-name
