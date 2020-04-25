@@ -70,6 +70,9 @@ const main = async () => {
   console.log('deploying ffmpeg Lambda layer')
   await execProcess('cd ffmpeg-lambda-layer && sls deploy');
 
+  // install Serverless pseudo-parameters
+  await execProcess('cd bento && npm install');
+
   // deploy bento 
   console.log('deploying bento')
   await execProcess('cd bento && sls deploy');
