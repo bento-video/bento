@@ -8,7 +8,6 @@
     "lib": "lib"
   },
   "dependencies": {
-    // "serverless": "^1.68.0",
     "serverless-pseudo-parameters": "^2.5.0"
   },
   "devDependencies": {},
