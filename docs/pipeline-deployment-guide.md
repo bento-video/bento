@@ -18,7 +18,7 @@ git clone https://github.com/bento-video/bento.git && mv ./bento/pipeline-setup.
 
 Within the *Bento root folder* there is a **serverless.yml** deployment file. By default the S3 bucket that contains your processed videos will allow GET requests originating from any IP address. If you wish to restrict access to only a given IP address edit line 20 of the **serverless.yml** file. Note that you will have to update this IP address whenever your IP address changes. Refer to [AWS docs](https://docs.aws.amazon.com/AmazonS3/latest/dev/example-bucket-policies.html#example-bucket-policies-use-case-2) for further details. 
 
-## 2. Install and configure [Serverless Framework](https://serverless.com/framework/docs/) 
+## 2. Install and configure [Serverless Framework](https://serverless.com/framework/docs/) and install Serverless [pseudo-parameters](https://serverless.com/plugins/serverless-pseudo-parameters/) plugin
 
 ```console
 npm install -g serverless 
@@ -30,7 +30,11 @@ Configure Serverless with your AWS credentials with the command below or visit [
 serverless config credentials --provider aws --key aws_access_key_id --secret aws_secret_access_key
 ```
 
-## 3. Create a [ffmpeg](https://www.ffmpeg.org/) Lambda layer, install Serverless [pseudo-parameters](https://serverless.com/plugins/serverless-pseudo-parameters/) plugin, deploy Bento 
+```console
+npm install serverless-pseudo-parameters
+```
+
+## 3. Create a [ffmpeg](https://www.ffmpeg.org/) Lambda layer, deploy Bento 
 
 ```console
 node pipeline-setup.js
