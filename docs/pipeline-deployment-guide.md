@@ -72,7 +72,7 @@ Enter the following:
 aws lambda list-layers
 ```
 
-This will output all of your available layers' attributes. The **arn** of the **awsCLI** and **ffmpeg layers** are needed for the following command:
+This will output all of your available layers' attributes. The **"LayerVersionArn"** of the **awsCLI** and **ffmpeg layers** are needed for the following command:
 
 ```console
 aws lambda update-function-configuration --function-name merger --layers awsCLI-layer-arn ffmpeg-layer-arn
