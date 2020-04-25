@@ -75,10 +75,6 @@ const main = async () => {
   console.log('deploying ffmpeg Lambda layer')
   await execProcess('cd ffmpeg-lambda-layer && sls deploy');
 
-  // deploy awscli
-  // console.log('deploying AWS CLI Lambda layer')
-  // await execProcess('cd awscli-lambda-layer && sls deploy');
-
   // deploy bento 
   console.log('deploying bento')
   await execProcess('cd bento && sls deploy');
