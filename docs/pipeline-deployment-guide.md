@@ -11,21 +11,32 @@
 Create a new folder to store the Bento app, we'll refer to this folder as the **Bento root folder**, within this folder:
 
 ```console
-git clone https://github.com/bento-video/bento.git` &&
-mv ./bento/pipeline-setup.js ./
+git clone https://github.com/bento-video/bento.git && mv ./bento/pipeline-setup.js ./
 ```
 
 ### Customize S3 bucket policy (optional)
 
 Within the *Bento root folder* there is a **serverless.yml** deployment file. By default the S3 bucket that contains your processed videos will allow GET requests originating from any IP address. If you wish to restrict access to only a given IP address edit line 20 of the **serverless.yml** file. Note that you will have to update this IP address whenever your IP address changes. Refer to [AWS docs](https://docs.aws.amazon.com/AmazonS3/latest/dev/example-bucket-policies.html#example-bucket-policies-use-case-2) for further details. 
 
-## 2. Create a [ffmpeg](https://www.ffmpeg.org/) Lambda layer, install [Serverless](https://serverless.com/framework/docs/getting-started/) framework, install Serverless [pseudo-parameters](https://serverless.com/plugins/serverless-pseudo-parameters/) plugin, deploy Bento 
+## 2. Install and configure [Serverless Framework](https://serverless.com/framework/docs/) 
+
+```console
+npm install -g serverless 
+```
+
+Configure Serverless with your AWS credentials with the command below or visit [Serverless AWS docs](https://serverless.com/framework/docs/providers/aws/cli-reference/config-credentials/) for more options.
+
+```console
+serverless config credentials --provider aws --key aws_access_key_id --secret aws_secret_access_key
+```
+
+## 3. Create a [ffmpeg](https://www.ffmpeg.org/) Lambda layer, install Serverless [pseudo-parameters](https://serverless.com/plugins/serverless-pseudo-parameters/) plugin, deploy Bento 
 
 ```console
 node pipeline-setup.js
 ```
 
-## 3. Create a [AWS CLI Lambda layer](https://github.com/aws-samples/aws-lambda-layer-awscli/tree/node12-runtime-support)
+## 4. Create a [AWS CLI Lambda layer](https://github.com/aws-samples/aws-lambda-layer-awscli/tree/node12-runtime-support)
 ### Clone Node 12 runtime branch 
 within *Bento root folder*:
 
@@ -53,7 +64,7 @@ S3BUCKET ?= your-bucket-name
 make layer-build-python27 layer-zip layer-upload layer-publish
 ```
 
-## 4. Add the awsCLI layer to the Merger Lambda
+## 5. Add the awsCLI layer to the Merger Lambda
 
 Enter the following:
 
