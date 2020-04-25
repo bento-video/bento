@@ -10,7 +10,7 @@ provider:
   region: us-east-1
   timeout: 900
   versionFunctions: false
-  
+
   environment:
     #S3
     NEW_VIDEO_BUCKET: ${self:custom.video-upload-bucket}
@@ -43,14 +43,17 @@ custom:
   segments-table: BentoSegments
   videos-table: BentoVideos
 
-# package:
-#   individually: true
-#   exclude:
-#     - ".*/**"
+package:
+  individually: true
+  exclude:
+    - ./**
 
 functions:
   recordUpload:
     handler: bentoRecordUpload/recordUpload.recordUpload
+    package:
+      include:
+        - bentoRecordUpload/recordUpload.js
     name: recordUpload
     memorySize: 512
     # provisionedConcurrency:
@@ -62,6 +65,9 @@ functions:
   executor:
     handler: bentoExecutor/executor.execute
     name: executor
+    package:
+      include:
+        - bentoExecutor/executor.js
     # provisionedConcurrency:
     # reserverdConcurrency:
     # timeout:
@@ -73,6 +79,9 @@ functions:
   transcoder:
     handler: bentoTranscoder/transcoder.transcode
     name: transcoder
+    package:
+      include:
+        - bentoTranscoder/transcoder.js
     memorySize: 3008
     # provisionedConcurrency:
     # reserverdConcurrency:
@@ -83,6 +92,9 @@ functions:
   mergeInvoker:
     handler: bentoMergeInvoker/mergeInvoker.mergeInvoke
     name: mergeInvoker
+    package:
+      include:
+        - bentoMergeInvoker/mergeInvoker.js
     memorySize: 128
     events:
       - stream:
@@ -101,6 +113,9 @@ functions:
   merger:
     handler: bentoMerger/merger.merge
     name: merger
+    package:
+      include:
+        - bentoMerger/merger.js
     # provisionedConcurrency:
     # reserverdConcurrency:
     # timeout:
@@ -116,45 +131,45 @@ resources:
       Properties:
         TableName: ${self:custom.videos-table}
         AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
+          - AttributeName: id
+            AttributeType: S
         KeySchema:
-        - AttributeName: id
-          KeyType: HASH
+          - AttributeName: id
+            KeyType: HASH
         ProvisionedThroughput:
-          ReadCapacityUnits: '5'
-          WriteCapacityUnits: '5'
+          ReadCapacityUnits: "5"
+          WriteCapacityUnits: "5"
     jobsTable:
       Type: AWS::DynamoDB::Table
       Properties:
         TableName: ${self:custom.jobs-table}
         AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: N
-        - AttributeName: videoId
-          AttributeType: S
-        KeySchema:
-        - AttributeName: id
-          KeyType: HASH
-        GlobalSecondaryIndexes:
-        - IndexName: VideoId
-          KeySchema:
+          - AttributeName: id
+            AttributeType: N
           - AttributeName: videoId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
             KeyType: HASH
-          Projection:
-            NonKeyAttributes:
-            - filename
-            - outputType
-            - resolution
-            - versionUrl
-            - status
-            ProjectionType: INCLUDE
-          ProvisionedThroughput:
-            ReadCapacityUnits: "5"
-            WriteCapacityUnits: "5"
+        GlobalSecondaryIndexes:
+          - IndexName: VideoId
+            KeySchema:
+              - AttributeName: videoId
+                KeyType: HASH
+            Projection:
+              NonKeyAttributes:
+                - filename
+                - outputType
+                - resolution
+                - versionUrl
+                - status
+              ProjectionType: INCLUDE
+            ProvisionedThroughput:
+              ReadCapacityUnits: "5"
+              WriteCapacityUnits: "5"
         ProvisionedThroughput:
-          ReadCapacityUnits: '5'
-          WriteCapacityUnits: '5'
+          ReadCapacityUnits: "5"
+          WriteCapacityUnits: "5"
         StreamSpecification:
           StreamViewType: NEW_IMAGE
     segmentsTable:
@@ -162,18 +177,18 @@ resources:
       Properties:
         TableName: ${self:custom.segments-table}
         AttributeDefinitions:
-        - AttributeName: jobId
-          AttributeType: N
-        - AttributeName: id
-          AttributeType: S
+          - AttributeName: jobId
+            AttributeType: N
+          - AttributeName: id
+            AttributeType: S
         KeySchema:
-        - AttributeName: jobId
-          KeyType: HASH
-        - AttributeName: id
-          KeyType: RANGE
+          - AttributeName: jobId
+            KeyType: HASH
+          - AttributeName: id
+            KeyType: RANGE
         ProvisionedThroughput:
-          ReadCapacityUnits: '5'
-          WriteCapacityUnits: '5'
+          ReadCapacityUnits: "5"
+          WriteCapacityUnits: "5"
     #S3
     videoUploadBucket:
       Type: AWS::S3::Bucket
@@ -213,11 +228,14 @@ resources:
               Effect: Allow
               Principal: "*"
               Action:
-              - s3:GetObject
+                - s3:GetObject
               Resource:
-                Fn::Join: ['', ['arn:aws:s3:::', Ref: processedVideosBucket, '/AWSLogs/*']]
+                Fn::Join:
+                  [
+                    "",
+                    ["arn:aws:s3:::", Ref: processedVideosBucket, "/AWSLogs/*"],
+                  ]
               # Condition: {
               #     "NotIpAddress": {"aws:SourceIp": "54.240.143.0/24"}
               #  }
 
-  
