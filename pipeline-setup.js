@@ -66,11 +66,6 @@ const main = async () => {
 
   await execProcess('mv ./ffmpeg-lambda-layer/layer/ffmpeg-git-*-amd64-static ./ffmpeg-lambda-layer/layer/ffmpeg');
 
-  // install Serverless pseudo-parameters plugin
-  console.log('installing Serverless pseudo-parameters plugin');
-  await execProcess('npm init -y --prefix ./bento')
-  await spawnProcess('npm', ['install', '--prefix', './bento', '-g', 'serverless-pseudo-parameters']);
-
   // deploy ffmpeg 
   console.log('deploying ffmpeg Lambda layer')
   await execProcess('cd ffmpeg-lambda-layer && sls deploy');
