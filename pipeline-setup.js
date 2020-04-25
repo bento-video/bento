@@ -66,32 +66,9 @@ const main = async () => {
 
   await execProcess('mv ./ffmpeg-lambda-layer/layer/ffmpeg-git-*-amd64-static ./ffmpeg-lambda-layer/layer/ffmpeg');
 
-  // console.log('creating AWS CLI Lambda layer')
-
-  // // clone bento awscli deployment folder
-  // await spawnProcess('git', ['clone', 'https://github.com/bento-video/awscli-lambda-layer.git']);
-
-  // await spawnProcess('mkdir', ['./awscli-lambda-layer/layer']);
-
-  // await spawnProcess('mkdir', ['./awscli-lambda-layer/layer/awscli']);
-
-  // // clone awscli Node 12 runtime branch
-  // await spawnProcess('git', ['clone', '-b', 'node12-runtime-support', 'https://github.com/aws-samples/aws-lambda-layer-awscli.git', './awscli-lambda-layer/layer/awscli']);
-
-  // // build the awscli layer
-  // await spawnProcess('make', ['layer-build-python27', '-C', './awscli-lambda-layer/layer/awscli']);
-
-  // console.log('Clone and deploy Bento infrastructure')
-
-  // // clone bento main repo
-  // await spawnProcess('git', ['clone', 'https://github.com/bento-video/bento.git']);
-
-  // install Serverless
-  console.log('installing Serverless');
-  await spawnProcess('npm', ['install', '--prefix', './bento', '- g', 'serverless']);
-
   // install Serverless pseudo-parameters plugin
   console.log('installing Serverless pseudo-parameters plugin');
+  await spawnProcess('npm', ['init', '--prefix', './bento'];
   await spawnProcess('npm', ['install', '--prefix', './bento', '-g', 'serverless-pseudo-parameters']);
 
   // deploy ffmpeg 
