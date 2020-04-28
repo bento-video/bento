@@ -111,8 +111,7 @@ aws ec2 describe-instances
  
 ### Build the React app
 ```console
-npm install build &&
-npm run build
+npm install && npm run build
 ```
 
 ## Serve React build files on S3
