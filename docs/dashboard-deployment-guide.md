@@ -18,7 +18,7 @@ git clone https://github.com/bento-video/bento-dashboard-backend.git && cd bento
 ```
 
 ### Update the Dockerfile
-Within the Dockerfile the following environment variables require values: 
+Within the Dockerfile (found within the `bento-dashboard-backend` folder) the following environment variables require values: 
 
 1. `ENV START_BUCKET` 
 2. `ENV END_BUCKET` 
@@ -29,9 +29,9 @@ enter the following command to view view all of your bucket names:
 aws s3api list-buckets --query "Buckets[].Name"
 ```
 
-There will be a bucket with **bento-dev-videouploadbucket** in its name. Use this bucket's full name for the value of *ENV START_BUCKET*. 
+There will be a bucket with **bento-prod-videouploadbucket** in its name. Use this bucket's full name for the value of *ENV START_BUCKET*. 
 
-There will be a bucket with **bento-dev-processedvideosbucket** in its name. Use the full bucket name for the value of *ENV END_BUCKET*. 
+There will be a bucket with **bento-prod-processedvideosbucket** in its name. Use the full bucket name for the value of *ENV END_BUCKET*. 
 
 3. `ENV RECORD_UPLOAD_LAMBDA`
 4. `ENV EXECUTOR_LAMBDA`
