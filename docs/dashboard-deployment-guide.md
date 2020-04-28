@@ -26,7 +26,7 @@ Within the Dockerfile the following environment variables require values:
 enter the following command to view view all of your bucket names:
 
 ```console
-`aws s3api list-buckets --query "Buckets[].Name"`
+aws s3api list-buckets --query "Buckets[].Name"
 ```
 
 There will be a bucket with **bento-dev-videouploadbucket** in its name. Use this bucket's full name for the value of *ENV START_BUCKET*. 
@@ -95,8 +95,7 @@ Within AWS web console modify the inbound rules for your EC2 instance:
 In your your local machine's terminal, within the *Bento root folder*, or any other folder:
 
 ```console
-git clone https://github.com/bento-video/bento-dashboard.git &&
-cd bento-dashboard
+git clone https://github.com/bento-video/bento-dashboard.git && cd bento-dashboard
 ```
 
 ### Update .env.production file
