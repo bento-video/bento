@@ -88,9 +88,9 @@ Within AWS web console modify the inbound rules for your EC2 instance:
 
 **Port range**: 3001
 
-**Source**: My IP (or any you want to aurhorize to interact with your Bento pipeline)
+**Source**: My IP (or any you want to authorize to interact with your Bento pipeline)
 
-## 5. Build the Bento React Dashboard 
+## 5. Build the Bento Dashboard 
 ### Clone repo
 In your your local machine's terminal, within the *Bento root folder*, or any other folder:
 
