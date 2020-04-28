@@ -1,4 +1,5 @@
 # Bento Pipeline (on AWS Resources) Deployment Guide
+Note: the deployment steps and configuration files default to creating AWS resources in region `us-east-1`.
 
 ## Prerequisites
 - [Node](https://nodejs.org/en/) 6 or higher
@@ -52,7 +53,7 @@ An S3 bucket name is needed. You can use the bucket Serverless created during th
 aws s3 ls
 ```
 
-The newly created bucket's name will contain `ffmpeg-layer-dev-serverlessdeploymentbucket`, take note of the bucket's full name. Make the following change in the *makefile* (found within the `aws-lambda-layer-awscli` folder):
+The newly created bucket's name will contain `ffmpeg-layer-prod-serverlessdeploymentbucket`, take note of the bucket's full name. Make the following change in the *makefile* (found within the `aws-lambda-layer-awscli` folder):
 
 ```console
 S3BUCKET ?= your-bucket-name
