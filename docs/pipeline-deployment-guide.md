@@ -37,7 +37,7 @@ serverless config credentials --provider aws --key aws_access_key_id --secret aw
 node pipeline-setup.js
 ```
 
-## 4. Create a [AWS CLI Lambda layer](https://github.com/aws-samples/aws-lambda-layer-awscli/tree/node12-runtime-support)
+## 4. Create a [AWS CLI Lambda layer](https://github.com/aws-samples/aws-lambda-layer-awscli/tree/node12-runtime-support) and add it to the Merger Lambda
 ### Clone Node 12 runtime branch 
 within *Bento root folder*:
 
@@ -65,7 +65,7 @@ S3BUCKET ?= your-bucket-name
 make layer-build-python27 layer-zip layer-upload layer-publish
 ```
 
-## 5. Add the awsCLI layer to the Merger Lambda
+### Add the awsCLI layer to the Merger Lambda
 
 Enter the following:
 
