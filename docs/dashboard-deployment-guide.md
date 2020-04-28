@@ -14,8 +14,7 @@ AWS EC2, type - Amazon Linux 2 instance
 In your your local machine's terminal, within the *Bento root folder* (created in the Bento pipeline deployment process), or any other folder:
 
 ```console
-git clone https://github.com/bento-video/bento-dashboard-backend.git &&
-cd bento-dashboard-backend
+git clone https://github.com/bento-video/bento-dashboard-backend.git && cd bento-dashboard-backend
 ```
 
 ### Update the Dockerfile
