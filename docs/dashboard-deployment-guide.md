@@ -123,6 +123,11 @@ Within the AWS S3 web console:
 
 - move all the files (and folder) within *bento-dashboard/build* to this bucket
 
+```
+aws s3 sync build/ s3://your-bucket-name --acl public-read
+```
+
+
 - navigate to the *Properties* tag and select *Static website hosting*
 
 - select *Use this bucket to host a website*, *Index document*: `index.html`
