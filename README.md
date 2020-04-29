@@ -30,19 +30,19 @@ Bento supports videos up to 2 GB in the following common formats: .mp4, .mkv, .m
 
 #### Steps
 
-**Navigate to the dashboard and click the Add a Video button**
+**• Navigate to the dashboard and click the Add a Video button**
 
 <div align="center">
   <img width="640" src="https://i.postimg.cc/7h41p3Vw/walkthrough-getstarted.png">
 </div>
 
-**Select a video to upload**
+**• Select a video to upload**
 
 <div align="center">
   <img width="640" src="https://i.postimg.cc/25P7xRLq/walkthrough-uploadvideo.png">
 </div>
 
-**The upload may take some time for large files. When the upload has completed, the video's details will appear.**
+**• The upload may take some time for large files. When the upload has completed, the video's details will appear.**
 
 <div align="center">
   <img width="640" src="https://i.postimg.cc/SsC7TTcg/walkthrough-uploadprogress.png">
@@ -57,19 +57,19 @@ From the dashboard, click on a video you've uploaded to see the Video page. A Vi
 
 #### Steps
 
-**Click on create a new version**
+**• Click on create a new version**
 
 <div align="center">
   <img width="640" src="https://i.postimg.cc/pTbKFf3z/walkthough-showvideo.png">
 </div>
 
-**Select the resolution you would like to transcode to and click Begin Job**
+**• Select the resolution you would like to transcode to and click Begin Job**
 
 <div align="center">
   <img width="640" src="https://i.postimg.cc/3xNj5Jg4/walkthrough-createjob.png">
 </div>
 
-**Grab a coffee. Most video files take less that a few minutes to transcode!**
+**• Grab a coffee. Most video files take less that a few minutes to transcode!**
 
 <div align="center">
   <img width="640" src="https://i.postimg.cc/fTB7r00Q/walkthrough-pendingjob.png">
@@ -84,13 +84,13 @@ You can delete versions of a video you've transcoded, or the original video you 
 
 #### Steps
 
-**Click the Delete button next to any version you've created to delete that version**
+**• Click the Delete button next to any version you've created to delete that version**
 
 <div align="center">
   <img width="640" src="https://i.postimg.cc/3xNj5Jg4/walkthrough-createjob.png">
 </div>
 
-**Click the Delete button to the right of the original video's details to delete that video and all versions you've created**
+**• Click the Delete button to the right of the original video's details to delete that video and all versions you've created**
 
 <div align="center">
   <img width="640" src="https://i.postimg.cc/P57Wts46/walkthrough-deleteversion.png">
