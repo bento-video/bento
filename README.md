@@ -69,7 +69,7 @@ From the dashboard, click on a video you've uploaded to see the Video page. A Vi
   <img width="640" src="https://i.postimg.cc/3xNj5Jg4/walkthrough-createjob.png">
 </div>
 
-**• Grab a coffee. Most video files take less that a few minutes to transcode!**
+**• Grab a coffee. Most video files take less than a few minutes to transcode!**
 
 <div align="center">
   <img width="640" src="https://i.postimg.cc/fTB7r00Q/walkthrough-pendingjob.png">
