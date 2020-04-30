@@ -233,7 +233,7 @@ resources:
                 Fn::Join:
                   [
                     "",
-                    ["arn:aws:s3:::", Ref: processedVideosBucket, "/AWSLogs/*"],
+                    ["arn:aws:s3:::", Ref: processedVideosBucket, "/*"],
                   ]
               # Condition: {
               #     "NotIpAddress": {"aws:SourceIp": "54.240.143.0/24"}
